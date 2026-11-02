@@ -26,7 +26,7 @@
   <!-- app styles (Studio Light) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/sources.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/cameras.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/schedules.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/recordings.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
@@ -42,7 +42,7 @@
       </div>
       <nav class="nav" aria-label="Main">
         <a href="#" class="active" onclick="loadHome()">Home</a>
-        <a href="#" onclick="loadSources()">Sources</a>
+        <a href="#" onclick="loadCameras()">Cameras</a>
         <a href="#" onclick="loadSchedules()">Schedules</a>
         <a href="#" onclick="intRecordingPage()">Recordings</a>
         <a href="#" onclick="loadSettings()">Settings</a>
@@ -51,7 +51,7 @@
     <div class="topbar__right">
       <label class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input type="search" id="globalSearch" placeholder="Find a source" aria-label="Find a source">
+        <input type="search" id="globalSearch" placeholder="Find a camera" aria-label="Find a camera">
       </label>
       <div class="avatar" aria-label="Signed in as Operator">OP</div>
     </div>
@@ -59,12 +59,12 @@
 
   <div class="layout">
 
-    <!-- Sources panel (shown on the Recordings page) -->
+    <!-- Cameras panel (shown on the Recordings page) -->
     <aside class="channel_sidebar" id="channel_sidebar">
-      <h3>Sources</h3>
+      <h3>Cameras</h3>
       <div class="channel-search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="channelSearchInput" placeholder="Search sources..." />
+        <input type="text" id="channelSearchInput" placeholder="Search cameras..." />
       </div>
       <div class="channel-list" id="channel_list">
         <!-- Dynamic items -->
@@ -75,7 +75,7 @@
     <main class="main">
       <section class="content" id="content">
         <h1>Welcome!</h1>
-        <p>Use the menu to add sources or manage recordings.</p>
+        <p>Use the menu to add cameras or manage recordings.</p>
       </section>
     </main>
 
@@ -94,7 +94,7 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/home.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/sources.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cameras.js') }}"></script>
   <script src="{{ url_for('static', filename='js/schedules.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/recordings.js') }}"></script>

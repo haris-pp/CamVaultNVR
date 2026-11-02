@@ -6,8 +6,8 @@ let scheduleMode = "view";
 async function loadSchedules() {
   hideChannelSidebar();
 
-  const res = await fetch('/api/sources');
-  const sources = await res.json();
+  const res = await fetch('/api/cameras');
+  const cameras = await res.json();
 
   const container = document.getElementById('content');
 
@@ -40,7 +40,7 @@ async function loadSchedules() {
 
     <section class="card">
       <div class="card__head">
-        <h2>Select source</h2>
+        <h2>Select cameras</h2>
 
         <div class="schedule-tools">
           <!-- Toggle switch -->
@@ -50,32 +50,32 @@ async function loadSchedules() {
           </div>
 
           <span id="mode-hint" class="hint">
-            Click a source to view its schedule
+            Click a camera to view its schedule
           </span>
 
           <input
             type="text"
-            id="sourceSearch"
-            class="source-search"
-            placeholder="Search source..."
-            oninput="filterSources(this.value)"
+            id="cameraSearch"
+            class="camera-search"
+            placeholder="Search camera..."
+            oninput="filterCameras(this.value)"
           >
         </div>
       </div>
 
-      <div class="source-grid">
+      <div class="camera-grid">
   `;
 
-  sources.forEach(source => {
+  cameras.forEach(camera => {
     html += `
-      <label class="source-card">
+      <label class="camera-card">
         <input
           type="checkbox"
-          class="source-checkbox"
-          value="${source.id}"
-          onchange="onSourcesChanged(event, this)"
+          class="camera-checkbox"
+          value="${camera.id}"
+          onchange="onCamerasChanged(event, this)"
         />
-        <span class="source-name">${escapeHtml(source.name)}</span>
+        <span class="camera-name">${escapeHtml(camera.name)}</span>
       </label>
     `;
   });
@@ -101,21 +101,21 @@ function toggleScheduleMode() {
   const saveBtn = document.getElementById("saveBtn");
 
   // Always reset everything on mode switch
-  document.querySelectorAll('.source-checkbox').forEach(cb => cb.checked = false);
-  selectedSourceIds = [];
+  document.querySelectorAll('.camera-checkbox').forEach(cb => cb.checked = false);
+  selectedCameraIds = [];
   clearScheduleGrid();
-  clearSourceHighlights();
+  clearCameraHighlights();
 
   if (scheduleMode === "view") {
     viewLabel.classList.add("is-on");
     editLabel.classList.remove("is-on");
-    hint.textContent = "Click a source to view its schedule";
+    hint.textContent = "Click a camera to view its schedule";
     saveBtn.disabled = true;
     saveBtn.style.display = "none";
   } else {
     editLabel.classList.add("is-on");
     viewLabel.classList.remove("is-on");
-    hint.textContent = "Select sources, draw schedule, then save";
+    hint.textContent = "Select cameras, draw schedule, then save";
     saveBtn.disabled = true;
     saveBtn.style.display = "";
   }
@@ -134,45 +134,45 @@ function applyModeToGrid() {
   }
 }
 
-// ---- SOURCE SELECTION ----
+// ---- CAMERA SELECTION ----
 
-function onSourcesChanged(event, changedCheckbox) {
+function onCamerasChanged(event, changedCheckbox) {
   if (scheduleMode === "view") {
     // --- VIEW MODE: only one checkbox allowed ---
-    const allCheckboxes = document.querySelectorAll('.source-checkbox');
+    const allCheckboxes = document.querySelectorAll('.camera-checkbox');
 
     if (changedCheckbox && changedCheckbox.checked) {
       // Uncheck all others
       allCheckboxes.forEach(cb => {
         if (cb !== changedCheckbox) cb.checked = false;
       });
-      selectedSourceIds = [parseInt(changedCheckbox.value)];
+      selectedCameraIds = [parseInt(changedCheckbox.value)];
     } else {
-      selectedSourceIds = [];
+      selectedCameraIds = [];
     }
 
-    clearSourceHighlights();
+    clearCameraHighlights();
     clearScheduleGrid();
 
     const saveBtn = document.getElementById("saveBtn");
     saveBtn.disabled = true; // View mode never saves
 
-    if (selectedSourceIds.length === 1) {
-      highlightActiveSource(selectedSourceIds[0]);
-      loadScheduleForSource(selectedSourceIds[0]);
+    if (selectedCameraIds.length === 1) {
+      highlightActiveCamera(selectedCameraIds[0]);
+      loadScheduleForCamera(selectedCameraIds[0]);
     }
 
   } else {
     // --- EDIT MODE: multi-select, no schedule loading ---
-    selectedSourceIds = [...document.querySelectorAll('.source-checkbox:checked')]
+    selectedCameraIds = [...document.querySelectorAll('.camera-checkbox:checked')]
       .map(cb => parseInt(cb.value));
 
     const saveBtn = document.getElementById("saveBtn");
-    saveBtn.disabled = selectedSourceIds.length === 0;
+    saveBtn.disabled = selectedCameraIds.length === 0;
 
-    clearSourceHighlights();
-    if (selectedSourceIds.length > 0) {
-      highlightActiveSource(selectedSourceIds[selectedSourceIds.length - 1]);
+    clearCameraHighlights();
+    if (selectedCameraIds.length > 0) {
+      highlightActiveCamera(selectedCameraIds[selectedCameraIds.length - 1]);
     }
     // Do NOT load/show any existing schedule in edit mode
   }
@@ -184,20 +184,20 @@ function clearScheduleGrid() {
     .forEach(slot => slot.classList.remove("selected"));
 }
 
-function highlightActiveSource(sourceId) {
+function highlightActiveCamera(cameraId) {
   const checkbox = document.querySelector(
-    `.source-checkbox[value="${sourceId}"]`
+    `.camera-checkbox[value="${cameraId}"]`
   );
   if (!checkbox) return;
-  checkbox.closest(".source-card").classList.add("active");
+  checkbox.closest(".camera-card").classList.add("active");
 }
 
-function clearSourceHighlights() {
-  document.querySelectorAll(".source-card.active")
+function clearCameraHighlights() {
+  document.querySelectorAll(".camera-card.active")
     .forEach(card => card.classList.remove("active"));
 }
 
-async function loadScheduleForSource(sourceId) {
+async function loadScheduleForCamera(cameraId) {
   const container = document.getElementById("schedule-container");
 
   container.innerHTML = `
@@ -208,7 +208,7 @@ async function loadScheduleForSource(sourceId) {
   buildScheduleGrid();
   applyModeToGrid(); // re-apply readonly after rebuild
 
-  const res = await fetch(`/api/schedules/${sourceId}`);
+  const res = await fetch(`/api/schedules/${cameraId}`);
   if (res.ok) {
     const data = await res.json();
     applySavedSchedule(data);
@@ -216,10 +216,10 @@ async function loadScheduleForSource(sourceId) {
 }
 
 
-function filterSources(query) {
+function filterCameras(query) {
   query = query.toLowerCase();
-  document.querySelectorAll(".source-card").forEach(card => {
-    const name = card.querySelector(".source-name").textContent.toLowerCase();
+  document.querySelectorAll(".camera-card").forEach(card => {
+    const name = card.querySelector(".camera-name").textContent.toLowerCase();
     card.style.display = name.includes(query) ? "" : "none";
   });
 }
@@ -398,23 +398,23 @@ function formatHourLabel(h) {
 }
 
 function saveSchedule() {
-  if (!selectedSourceIds.length) {
-    alert("Please select at least one source");
+  if (!selectedCameraIds.length) {
+    alert("Please select at least one camera");
     return;
   }
 
   const scheduleData = generateJSON();
 
   Promise.all(
-    selectedSourceIds.map(sourceId =>
-      fetch(`/api/schedules/${sourceId}`, {
+    selectedCameraIds.map(cameraId =>
+      fetch(`/api/schedules/${cameraId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scheduleData)
       })
     )
   ).then(() => {
-    alert("Schedule saved for selected sources");
+    alert("Schedule saved for selected cameras");
   }).catch(() => {
     alert("Failed to save schedule");
   });

@@ -1,6 +1,6 @@
 /* CamVault NVR · Studio Light
    Tokens, base, app shell and shared components.
-   Page-specific styles live in home.css, sources.css, schedules.css, recordings.css, settings.css */
+   Page-specific styles live in home.css, cameras.css, schedules.css, recordings.css, settings.css */
 
 :root {
   --bg: #f3f5f8;
@@ -94,7 +94,7 @@ button, input, select { font: inherit; color: inherit; }
 .nav a:hover { background: var(--surface-2); color: var(--ink); }
 .nav a.active { background: var(--accent); color: var(--accent-ink); }
 
-/* ---------- App layout: [sources panel] [content] [status panel] ---------- */
+/* ---------- App layout: [cameras panel] [content] [status panel] ---------- */
 .layout {
   position: relative;
   flex: 1 1 auto;
@@ -236,7 +236,7 @@ td { padding: 14px; border-bottom: 1px solid var(--border-soft); vertical-align:
 tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--surface-2); }
 
-/* ---------- Status badges (sources table, status panel) ---------- */
+/* ---------- Status badges (cameras list, status panel) ---------- */
 .status-badge {
   display: inline-flex; align-items: center;
   padding: 4px 10px;

@@ -1,4 +1,4 @@
-/* Schedules page: weekly 15-minute grid + source picker */
+/* Schedules page: weekly 15-minute grid + camera picker */
 
 #schedule-container { overflow-x: auto; padding-bottom: 4px; }
 
@@ -98,11 +98,11 @@ body.no-scroll { overflow: hidden; }
   transition: background .15s, color .15s;
 }
 .mode-label.is-on { background: var(--accent); color: var(--accent-ink); }
-.source-search { width: 190px; height: 36px; }
+.camera-search { width: 190px; height: 36px; }
 
-/* Source cards */
-.source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-.source-card {
+/* Camera cards */
+.camera-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.camera-card {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 14px;
   border: 1px solid var(--border);
@@ -111,9 +111,9 @@ body.no-scroll { overflow: hidden; }
   cursor: pointer;
   transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.source-card:hover { border-color: var(--faint); }
-.source-card.active { border-color: var(--accent); background: var(--surface-2); box-shadow: 0 0 0 3px rgba(15, 23, 42, .08); }
-.source-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.camera-card:hover { border-color: var(--faint); }
+.camera-card.active { border-color: var(--accent); background: var(--surface-2); box-shadow: 0 0 0 3px rgba(15, 23, 42, .08); }
+.camera-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* spacing between stacked cards on this page */
 .content .card ~ .card { margin-top: 20px; }

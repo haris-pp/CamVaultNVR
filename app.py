@@ -739,11 +739,11 @@ def ffmpeg_supervisor():
 def index():
     return render_template("index.html")
 
-@app.route("/api/sources", methods=["GET", "POST", "DELETE"])
-def api_sources():
+@app.route("/api/cameras", methods=["GET", "POST", "DELETE"])
+def api_cameras():
     if request.method == "GET":
-        sources = query_db("SELECT * FROM input_sources ORDER BY id")
-        for source in sources:
+        cameras = query_db("SELECT * FROM input_sources ORDER BY id")
+        for source in cameras:
             active_schedules = query_db(
                 "SELECT status, status_msg FROM schedules WHERE source_id = ?",
                 (source['id'], )
@@ -754,7 +754,7 @@ def api_sources():
             else:
                 source['current_status'] = 'Not Scheduled'
                 source['status_msg'] = ''
-        return jsonify(sources)
+        return jsonify(cameras)
 
     if request.method == "POST":
         data = request.get_json()
@@ -779,7 +779,7 @@ def api_sources():
         execute_db( "UPDATE input_sources SET record_folder_name = ? WHERE id = ?",(record_folder_name, new_id), )
 
         go2rtc_client.register_source(new_id, url, sub_url)   # live view (no-op if go2rtc is not running)
-        logger.info(f"➕ Source added: id={new_id}, name={name}, folder={record_folder_name}")
+        logger.info(f"➕ Camera added: id={new_id}, name={name}, folder={record_folder_name}")
         return jsonify({"status": "added", "id": new_id, "record_folder_name": record_folder_name})
 
 
@@ -788,12 +788,12 @@ def api_sources():
         sid = request.args.get("id", type=int)
         execute_db("DELETE FROM input_sources WHERE id = ?", (sid,))
         go2rtc_client.remove_source(sid)
-        logger.info(f"🗑️ Source deleted: id={sid}")
+        logger.info(f"🗑️ Camera deleted: id={sid}")
         return jsonify({"status": "deleted", "id": sid})
 
 
-@app.route("/api/sources/<int:source_id>", methods=["PUT"])
-def api_update_source(source_id):
+@app.route("/api/cameras/<int:source_id>", methods=["PUT"])
+def api_update_camera(source_id):
     """Edit a camera's name / address / low-quality stream. The recording folder never changes."""
     row = query_db("SELECT * FROM input_sources WHERE id = ?", (source_id,), one=True)
     if not row:
@@ -849,8 +849,8 @@ def _friendly_probe_error(text, url):
     return (lines[-1] if lines else "No video found at that address.")[:200]
 
 
-@app.route("/api/sources/test", methods=["POST"])
-def api_source_test():
+@app.route("/api/cameras/test", methods=["POST"])
+def api_camera_test():
     """Open the stream for a few seconds and report codec / size / fps (nothing is saved)."""
     url = ((request.get_json(silent=True) or {}).get("url") or "").strip()
     if not url.lower().startswith(_TEST_SCHEMES):

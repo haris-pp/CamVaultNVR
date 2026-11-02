@@ -15,7 +15,7 @@ async function loadHome() {
     <div class="page-head">
       <div>
         <div class="eyebrow">${new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        <h1>Source wall</h1>
+        <h1>Camera wall</h1>
       </div>
       <div class="stats">
         <div><div class="stat__value" id="stat-recording">-- / --</div><div class="stat__label">Recording now</div></div>
@@ -24,7 +24,7 @@ async function loadHome() {
       </div>
     </div>
 
-    <div class="wall" id="source-wall" aria-label="Sources"></div>
+    <div class="wall" id="camera-wall" aria-label="Cameras"></div>
 
     <div class="home-row">
       <section class="card sched-list">
@@ -239,26 +239,26 @@ function tickClock() {
   document.querySelectorAll(".tile__time[data-live]").forEach(el => { el.textContent = t; });
 }
 
-// Source tiles on Home (uses the existing /api/sources endpoint)
-async function updateSourceWall() {
-  const wall = document.getElementById("source-wall");
+// Camera tiles on Home (uses the existing /api/cameras endpoint)
+async function updateCameraWall() {
+  const wall = document.getElementById("camera-wall");
   if (!wall) return;
   try {
-    const res = await fetch("/api/sources");
-    const sources = await res.json();
-    const schedules = await Promise.all(sources.map(s => fetchSchedule(s.id)));
+    const res = await fetch("/api/cameras");
+    const cameras = await res.json();
+    const schedules = await Promise.all(cameras.map(s => fetchSchedule(s.id)));
     const merged = schedules.map(weekIntervals);
 
-    const recording = sources.filter(s => (s.current_status || "").toLowerCase().includes("running")).length;
-    const attention = sources.filter(s => (s.current_status || "").toLowerCase().includes("error")).length;
+    const recording = cameras.filter(s => (s.current_status || "").toLowerCase().includes("running")).length;
+    const attention = cameras.filter(s => (s.current_status || "").toLowerCase().includes("error")).length;
     const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setText("stat-recording", `${recording} / ${sources.length}`);
+    setText("stat-recording", `${recording} / ${cameras.length}`);
     setText("stat-attention", attention);
 
     // Next on the schedule
     const list = document.getElementById("next-list");
     if (list) {
-      const events = sources.flatMap((s, i) => upcomingEvents(s.name, merged[i])).sort((a, b) => a.delta - b.delta).slice(0, 5);
+      const events = cameras.flatMap((s, i) => upcomingEvents(s.name, merged[i])).sort((a, b) => a.delta - b.delta).slice(0, 5);
       const anyTimed = merged.some(m => m.length);
       list.innerHTML = events.length ? events.map(ev => `
         <div class="sched-item">
@@ -266,18 +266,18 @@ async function updateSourceWall() {
           <span class="sched-item__name">${escapeHtml(ev.name)}</span>
           <span class="chip">${ev.kind}</span>
         </div>`).join("") :
-        `<p class="muted">${anyTimed || sources.length ? "Nothing scheduled in the next 24 hours." : "No sources yet."}</p>`;
+        `<p class="muted">${anyTimed || cameras.length ? "Nothing scheduled in the next 24 hours." : "No cameras yet."}</p>`;
     }
 
-    if (!sources.length) {
-      wall.innerHTML = '<p class="muted">No sources yet. Add one from the Sources page.</p>';
+    if (!cameras.length) {
+      wall.innerHTML = '<p class="muted">No cameras yet. Add one from the Cameras page.</p>';
       return;
     }
 
     const nowPct = ((new Date().getHours() * 3600 + new Date().getMinutes() * 60) / SEC_DAY * 100).toFixed(2);
     const clock = new Date().toLocaleTimeString("en-GB");
 
-    wall.innerHTML = sources.map((s, i) => {
+    wall.innerHTML = cameras.map((s, i) => {
       const status = (s.current_status || "").toLowerCase();
       let badge = '<span class="badge badge--idle">' + (status === "not scheduled" ? "Not scheduled" : escapeHtml(s.current_status || "Not scheduled")) + '</span>';
       let time = "--:--:--";
@@ -296,6 +296,7 @@ async function updateSourceWall() {
             <img class="tile__snap" alt="" onerror="this.hidden=true" data-stream="${s.sub_url ? 'cam_' + s.id + '_sub' : 'cam_' + s.id}" src="${snapCache[s.sub_url ? 'cam_' + s.id + '_sub' : 'cam_' + s.id] || ''}"${snapCache[s.sub_url ? 'cam_' + s.id + '_sub' : 'cam_' + s.id] ? '' : ' hidden'}>
             <span class="tile__badge">${badge}</span>
             <span class="tile__time"${live}>${time}</span>
+            <span class="tile__hint" hidden></span>
             <div class="tile__bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           </div>
           <div class="tile__body">
@@ -310,7 +311,7 @@ async function updateSourceWall() {
     applyGlobalSearch();
     refreshSnapshots();
   } catch (err) {
-    console.error("Failed to load sources:", err);
+    console.error("Failed to load cameras:", err);
   }
 }
 
@@ -327,27 +328,48 @@ async function getLiveConfig(force) {
   return liveCfg;
 }
 
-// Fetch a fresh JPEG for every visible tile (one request per tile, runs after each Home refresh)
+const snapBusy = new Set();    // stream names with a snapshot request in flight
+
+function setSnapHint(name, text) {
+  document.querySelectorAll(`#camera-wall img.tile__snap[data-stream="${name}"]`).forEach(img => {
+    const hint = img.parentElement.querySelector(".tile__hint");
+    if (!hint) return;
+    hint.textContent = text || "";
+    hint.hidden = !text;
+  });
+}
+
+// Fetch a fresh JPEG for every visible tile (one request per camera, runs after each Home refresh).
+// The first snapshot can take several seconds: go2rtc has to connect and wait for a keyframe.
 async function refreshSnapshots() {
   const cfg = await getLiveConfig(true);
-  if (!cfg.available) return;
-  document.querySelectorAll("#source-wall img.tile__snap").forEach(async img => {
-    const name = img.dataset.stream;
+  const names = [...new Set([...document.querySelectorAll("#camera-wall img.tile__snap")].map(i => i.dataset.stream))];
+  if (!cfg.available) { names.forEach(n => setSnapHint(n, "Live view off")); return; }
+
+  names.forEach(async name => {
+    if (snapBusy.has(name)) return;
+    snapBusy.add(name);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const timer = setTimeout(() => ctrl.abort(), 25000);
     try {
       const r = await fetch(`${cfg.base}/api/frame.jpeg?src=${encodeURIComponent(name)}`, { signal: ctrl.signal });
-      if (!r.ok) return;
-      const blob = await r.blob();
-      if (!blob.type.startsWith("image/") || blob.size < 200) return;   // camera offline: keep placeholder
+      const blob = r.ok ? await r.blob() : null;
+      if (!blob || !blob.type.startsWith("image/") || blob.size < 200) { setSnapHint(name, "No image from camera"); return; }
       const url = URL.createObjectURL(blob);
       if (snapCache[name]) URL.revokeObjectURL(snapCache[name]);
       snapCache[name] = url;
-      img.onerror = () => { img.hidden = true; delete snapCache[name]; };
-      img.src = url;
-      img.hidden = false;
-    } catch (e) { /* camera offline or live view not running: keep the placeholder */ }
-    finally { clearTimeout(timer); }
+      document.querySelectorAll(`#camera-wall img.tile__snap[data-stream="${name}"]`).forEach(img => {
+        img.onerror = () => { img.hidden = true; delete snapCache[name]; };
+        img.src = url;
+        img.hidden = false;
+      });
+      setSnapHint(name, "");
+    } catch (e) {
+      setSnapHint(name, e.name === "AbortError" ? "Camera too slow to respond" : "Live view not reachable");
+    } finally {
+      clearTimeout(timer);
+      snapBusy.delete(name);
+    }
   });
 }
 
@@ -400,17 +422,17 @@ async function openLive(id, name, hasSub) {
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeLive(); });
 document.addEventListener("click", e => {
-  const tile = e.target.closest && e.target.closest("#source-wall .tile");
+  const tile = e.target.closest && e.target.closest("#camera-wall .tile");
   if (tile) openLive(tile.dataset.id, tile.dataset.name, tile.dataset.sub === "1");
 });
 
 
-/* ---------- Header search (filters source tiles on Home) ---------- */
+/* ---------- Header search (filters camera tiles on Home) ---------- */
 function applyGlobalSearch() {
   const input = document.getElementById("globalSearch");
   if (!input) return;
   const q = input.value.trim().toLowerCase();
-  document.querySelectorAll("#source-wall .tile").forEach(t => {
+  document.querySelectorAll("#camera-wall .tile").forEach(t => {
     const name = (t.querySelector("h3")?.textContent || "").toLowerCase();
     t.style.display = !q || name.includes(q) ? "" : "none";
   });
@@ -445,7 +467,7 @@ async function updateDashboard() {
     console.error("Failed to load system stats:", err);
   }
 
-  updateSourceWall();
+  updateCameraWall();
 }
 
 /* ---------- Expose Session ID ---------- */

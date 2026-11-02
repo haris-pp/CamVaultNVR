@@ -7,19 +7,19 @@ schedules and playback logic are untouched.
 | File | Purpose |
 |------|---------|
 | `go2rtc_client.py` | Registers/removes cameras in go2rtc, re-syncs every 30 s, fails quietly if go2rtc is not running |
-| `go2rtc/go2rtc.yaml` | go2rtc configuration (ports, CORS for the app) |
-| `go2rtc/README.md` | Install and security notes |
+| `tools/go2rtc/go2rtc.yaml` | go2rtc configuration (ports, CORS for the app) |
+| `tools/go2rtc/README.md` | Install and security notes |
 | `run_windows.bat` | Starts go2rtc (if `go2rtc\go2rtc.exe` exists) and `python app.py` |
 
 ## Modified files
 | File | Change |
 |------|--------|
-| `app.py` | (1) `import go2rtc_client`; (2) `POST /api/sources` accepts optional `sub_url`, stores it and registers the camera with go2rtc; (3) `DELETE /api/sources` also removes it from go2rtc; (4) new `GET /api/live/config` and `POST /api/live/sync`; (5) `migrate_db()` adds the `sub_url` column to existing databases automatically; (6) starts the go2rtc sync thread in the `__main__` block |
+| `app.py` | (1) `import go2rtc_client`; (2) `POST /api/cameras` accepts optional `sub_url`, stores it and registers the camera with go2rtc; (3) `DELETE /api/cameras` also removes it from go2rtc; (4) new `GET /api/live/config` and `POST /api/live/sync`; (5) `migrate_db()` adds the `sub_url` column to existing databases automatically; (6) starts the go2rtc sync thread in the `__main__` block |
 | `init_db.py` | `sub_url` column for new databases |
 | `static/js/home.js` | Snapshot image on each tile, click a tile to open the live pop-up (Low/Full switch), Esc to close |
-| `static/js/sources.js` | Optional "Substream URL" field and display |
+| `static/js/cameras.js` | Optional "Substream URL" field and display |
 | `static/css/home.css` | Snapshot and live pop-up styles |
-| `static/css/sources.css` | Add-source form now has three fields |
+| `static/css/cameras.css` | Add-camera form now has three fields |
 | `.gitignore`, `README.md` | go2rtc binary ignored; short live-view notes |
 
 ## Upgrade steps

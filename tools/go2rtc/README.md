@@ -16,7 +16,7 @@ schedules and playback work as before and tiles simply show no live image.
 Download the matching binary, `chmod +x go2rtc`, run it from this folder, then `python app.py`.
 
 ## How it works
-- Add a camera on the **Sources** page. Optionally enter a low-resolution *substream* URL
+- Add a camera on the **Cameras** page. Optionally enter a low-resolution *substream* URL
   (usually H.264) – tiles and the default live view use it, "Full" switches to the main stream.
 - The app registers each camera with go2rtc automatically (and re-registers every 30 s if go2rtc was restarted).
 - **Home**: tiles show a snapshot that refreshes every 10 s; click a tile for live video.

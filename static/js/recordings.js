@@ -213,7 +213,7 @@ window.skip_duration = skipDuration;
 
   window.player = player;
 
-  // Define custom Source Dropdown component
+  // Define custom Camera Dropdown component
   const Component = videojs.getComponent('Component');
   
  
@@ -238,7 +238,7 @@ window.skip_duration = skipDuration;
         z-index: 100;
         display: none;
       `;
-      this.el().textContent = 'Select source and date to load recordings';
+      this.el().textContent = 'Select camera and date to load recordings';
     }
     
     setMessage(message) {
@@ -369,7 +369,7 @@ document.getElementById('quick-load-btn').addEventListener('click', loadRecordin
   const rightbar = document.querySelector('.rightbar');
 
   if (!source || !date) {
-    overlay.setMessage('⚠️ Please select a source and date first');
+    overlay.setMessage('⚠️ Please select a camera and date first');
     return;
   }
 
@@ -430,7 +430,7 @@ updateTimeInputState(); // init
   intCahnnelSideBar();
 
   const rightbar = document.querySelector('.rightbar');
-  rightbar.innerHTML = '<h3>Recordings</h3><p>Select source and date</p>';
+  rightbar.innerHTML = '<h3>Recordings</h3><p>Select camera and date</p>';
     
 }
 
@@ -447,8 +447,8 @@ async function loadRecordingForTimeRange() {
   const rightbar = document.querySelector('.rightbar');
   
   if (!source || !date) {
-    overlay.setMessage('Select source and date to load recordings');
-    rightbar.innerHTML = '<h3>Recordings</h3><p>Select source and date</p>';
+    overlay.setMessage('Select camera and date to load recordings');
+    rightbar.innerHTML = '<h3>Recordings</h3><p>Select camera and date</p>';
     return;
   }
 
@@ -483,8 +483,8 @@ async function loadRecordingSlots() {
   const rightbar = document.querySelector('.rightbar');
 
   if (!source || !date) {
-    overlay.setMessage('⚠️ Please select source and date first');
-    rightbar.innerHTML = '<h3>Recording Slots</h3><p>Select source and date</p>';
+    overlay.setMessage('⚠️ Please select camera and date first');
+    rightbar.innerHTML = '<h3>Recording Slots</h3><p>Select camera and date</p>';
     return;
   }
 
@@ -1041,13 +1041,13 @@ window.selectedSource = null;   // will hold the record_folder_name
 
 async function loadChannelList() {
   try {
-    const [sourcesRes] = await Promise.all([fetch('/api/sources')]);
-    const sources = await sourcesRes.json();
+    const [camerasRes] = await Promise.all([fetch('/api/cameras')]);
+    const cameras = await camerasRes.json();
 
     const channelListEl = document.getElementById('channel_list');
     channelListEl.innerHTML = '';                     // clear previous
 
-    sources.forEach(s => {
+    cameras.forEach(s => {
       const li = document.createElement('li');
       li.innerHTML = `
         <div class="channel-item" data-source="${s.record_folder_name}">
@@ -1070,7 +1070,7 @@ async function loadChannelList() {
   }
 }
 
-function selectChannel(liElement, sourceObj) {
+function selectChannel(liElement, cameraObj) {
 
  if (window.player) {
     window.player.pause();
@@ -1088,7 +1088,7 @@ function selectChannel(liElement, sourceObj) {
     // Show overlay message
     const overlay = window.player.getChild('OverlayMessage');
     if (overlay) {
-      overlay.setMessage('Select source and date to load recordings');
+      overlay.setMessage('Select camera and date to load recordings');
     }
   }
 
@@ -1101,9 +1101,9 @@ function selectChannel(liElement, sourceObj) {
   if (channelItem) channelItem.classList.add('active');
 
   // Store globally
-  window.selectedSource = sourceObj.record_folder_name;
+  window.selectedSource = cameraObj.record_folder_name;
 
-  // Load recordings for the selected source
+  // Load recordings for the selected camera
   loadRecordingSlots();
 }
 

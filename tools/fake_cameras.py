@@ -109,11 +109,37 @@ def _write_mediamtx_config() -> Path:
     return cfg
 
 
+def _probe_video(ffmpeg: str, video: Path):
+    """Return (codec_name, pix_fmt) of the first video stream, or (None, None)."""
+    probe = Path(ffmpeg).with_name("ffprobe" + Path(ffmpeg).suffix)
+    exe = str(probe) if probe.exists() else (shutil.which("ffprobe") or "")
+    if not exe:
+        return None, None
+    try:
+        out = subprocess.run(
+            [exe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt",
+             "-of", "csv=p=0", str(video)], capture_output=True, text=True, timeout=20).stdout.strip()
+        codec, _, pix = out.partition(",")
+        return codec or None, pix or None
+    except Exception:
+        return None, None
+
+
+def _codec_args(ffmpeg: str, video: Path, name: str):
+    """Browsers only play H.264 (8-bit 4:2:0). Copy such files untouched, convert everything else."""
+    codec, pix = _probe_video(ffmpeg, video)
+    if not REENCODE and codec == "h264" and pix in ("yuv420p", "yuvj420p"):
+        return ["-c:v", "copy", "-c:a", "aac"]
+    log.info("[TEST-CAM] %s: video is %s/%s - converting to H.264 so browsers can play it",
+             name, codec or "unknown", pix or "?")
+    return ["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-pix_fmt", "yuv420p", "-g", "50", "-c:a", "aac"]
+
+
 def _publisher(ffmpeg: str, video: Path, name: str):
     """Keep one looping ffmpeg publishing `video` to rtsp://127.0.0.1:PORT/name (restarts if it dies)."""
     url = f"rtsp://127.0.0.1:{RTSP_PORT}/{name}"
-    codec = (["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency", "-g", "50", "-c:a", "aac"]
-             if REENCODE else ["-c", "copy"])
+    codec = _codec_args(ffmpeg, video, name)
     cmd = [ffmpeg, "-hide_banner", "-loglevel", "warning", "-nostdin",
            "-re", "-stream_loop", "-1", "-i", str(video),
            "-map", "0:v:0", "-map", "0:a:0?", *codec,
@@ -127,8 +153,8 @@ def _publisher(ffmpeg: str, video: Path, name: str):
             break
         quick_failures = quick_failures + 1 if time.time() - began < 5 else 0
         if quick_failures == 3:
-            log.error("[TEST-CAM] %s keeps failing - see test_cameras/ffmpeg_%s.log "
-                      "(try TEST_REENCODE=1 if the file's codec cannot be copied)", name, name)
+            log.error("[TEST-CAM] %s keeps failing - see tools/ffmpeg_%s.log "
+                      "(is the file a valid video?)", name, name)
         time.sleep(3)
 
 
@@ -239,7 +265,7 @@ def _install_signal_handlers():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     if start():
-        print("\nAdd these URLs on the Sources page. Press Ctrl+C to stop.\n")
+        print("\nAdd these URLs on the Cameras page. Press Ctrl+C to stop.\n")
         try:
             while True:
                 time.sleep(1)

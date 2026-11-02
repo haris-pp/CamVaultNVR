@@ -1,6 +1,6 @@
-/* Recordings page: source list, player, trim + time-range controls, slots, trim clips */
+/* Recordings page: camera list, player, trim + time-range controls, slots, trim clips */
 
-/* ---------- Source list (left panel) ---------- */
+/* ---------- Camera list (left panel) ---------- */
 .channel-search { position: relative; margin-bottom: 12px; }
 .channel-search input { width: 100%; height: 40px; padding-left: 38px; border-radius: 999px; background: var(--bg); }
 .channel-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 13px; pointer-events: none; }

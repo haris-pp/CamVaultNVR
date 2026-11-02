@@ -1,4 +1,4 @@
-/* Home: overview cards, meters, source tiles, status panel */
+/* Home: overview cards, meters, camera tiles, status panel */
 
 /* Header stats (top right of the page header) */
 .stats { display: flex; flex-wrap: wrap; gap: 28px; }
@@ -41,7 +41,7 @@
 .meter > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .4s ease; }
 .meter > i.hot { background: var(--rec); }
 
-/* Source tiles */
+/* Camera tiles */
 .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
 .tile {
   background: var(--surface);
@@ -93,3 +93,6 @@
 .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
 .seg__btn { height: 30px; padding: 0 14px; border: 0; background: transparent; border-radius: 999px; font-size: 13px; color: var(--muted); }
 .seg__btn.is-on { background: var(--accent); color: var(--accent-ink); }
+
+.tile__hint { position: absolute; left: 12px; bottom: 16px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: rgba(15, 23, 42, .75); color: #cbd5e1; font-size: 11px; font-weight: 600; }
+.tile__hint[hidden] { display: none; }

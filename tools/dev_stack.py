@@ -10,7 +10,7 @@ What it does (every step is skipped quietly if its files are missing):
   1. go2rtc      - live-view gateway.  Looks for tools/go2rtc/go2rtc(.exe) or go2rtc/go2rtc(.exe).
   2. fake cameras - MediaMTX + ffmpeg turn every .mp4 in tools/ into a looping RTSP camera
                     (rtsp://127.0.0.1:8654/<file name>)  - see tools/fake_cameras.py.
-  3. camera list - each fake camera is added to the Sources list (and registered with go2rtc)
+  3. camera list - each fake camera is added to the Cameras page (and registered with go2rtc)
                    if it is not there yet.  An old test camera that points at a wrong local port
                    (8554 / 8654) is re-pointed to the right URL.  Real cameras are never touched.
 
@@ -99,14 +99,15 @@ def start_go2rtc() -> bool:
 _LOCAL_TEST_URL = re.compile(r"^rtsp://[^/]+:(8554|8654)/", re.I)
 
 
-def _seed_sources(query_db, execute_db, urls: list[str]):
-    """Make sure every fake camera is in the Sources list with the right URL."""
+def _seed_cameras(query_db, execute_db, urls: list[str]):
+    """Make sure every fake camera is in the Cameras list with the right URL."""
     import go2rtc_client
 
     rows = query_db("SELECT id, name, url, sub_url FROM input_sources")
     for url in urls:
         stem = url.rsplit("/", 1)[-1]                               # e.g. "parking"
-        name = stem.replace("_", " ").title()                       # e.g. "Parking"
+        words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", stem.replace("_", " ").replace("-", " ")).split()
+        name = " ".join(w[:1].upper() + w[1:] for w in words) or stem   # "MainParking" -> "Main Parking"
         if any(r["url"] == url for r in rows):
             continue
 
@@ -134,7 +135,7 @@ def _seed_sources(query_db, execute_db, urls: list[str]):
 
 # --------------------------------------------------------------- public API
 def start_all(query_db, execute_db):
-    """Start go2rtc + fake cameras and add the fake cameras to the Sources list. Never raises."""
+    """Start go2rtc + fake cameras and add the fake cameras to the Cameras list. Never raises."""
     global _started
     if _started or os.environ.get("CAMVAULT_DEV", "1") == "0":
         return
@@ -150,7 +151,7 @@ def start_all(query_db, execute_db):
     try:
         from tools import fake_cameras
         if fake_cameras.start():
-            _seed_sources(query_db, execute_db, fake_cameras.urls())
+            _seed_cameras(query_db, execute_db, fake_cameras.urls())
     except Exception as exc:
         log.warning("[DEV] fake cameras not started: %s", exc)
 
