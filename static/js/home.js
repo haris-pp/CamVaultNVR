@@ -92,6 +92,9 @@ document.querySelectorAll('.topbar nav a').forEach(link => {
 
     const showRightbarPages = ["recordings"];
 
+    // Recordings uses a framed, one-screen layout
+    layout.classList.toggle('rec-mode', currentPage === 'recordings');
+
     if (showRightbarPages.includes(currentPage)) {
       rightbar.classList.remove('hidden');
       layout.classList.remove('rightbar-hidden');
