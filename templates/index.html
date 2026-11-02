@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CamVault NVR</title>
+
+  <!-- fonts -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 30 30%27%3E%3Crect width=%2730%27 height=%2730%27 rx=%278%27 fill=%27%230f172a%27/%3E%3Ccircle cx=%2715%27 cy=%2715%27 r=%275.5%27 fill=%27%23fff%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- video player -->
+  <script src="{{ url_for('static', filename='js/video.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/videojs.hotkeys.min.js') }}"></script>
+  <link href="{{ url_for('static', filename='css/video-js.min.css') }}" rel="stylesheet" />
+
+  <!-- icons -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome/css/all.min.css') }}">
+
+  <!-- range slider -->
+  <script src="{{ url_for('static', filename='js/nouislider.min.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/nouislider.min.css') }}">
+
+  <!-- app styles (Studio Light) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sources.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/schedules.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/recordings.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <div class="brand">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="#0f172a"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>
+        CamVault
+      </div>
+      <nav class="nav" aria-label="Main">
+        <a href="#" class="active" onclick="loadHome()">Home</a>
+        <a href="#" onclick="loadSources()">Sources</a>
+        <a href="#" onclick="loadSchedules()">Schedules</a>
+        <a href="#" onclick="intRecordingPage()">Recordings</a>
+        <a href="#" onclick="loadSettings()">Settings</a>
+      </nav>
+    </div>
+    <div class="topbar__right">
+      <label class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="globalSearch" placeholder="Find a source" aria-label="Find a source">
+      </label>
+      <div class="avatar" aria-label="Signed in as Operator">OP</div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- Sources panel (shown on the Recordings page) -->
+    <aside class="channel_sidebar" id="channel_sidebar">
+      <h3>Sources</h3>
+      <div class="channel-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="channelSearchInput" placeholder="Search sources..." />
+      </div>
+      <div class="channel-list" id="channel_list">
+        <!-- Dynamic items -->
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <section class="content" id="content">
+        <h1>Welcome!</h1>
+        <p>Use the menu to add sources or manage recordings.</p>
+      </section>
+    </main>
+
+    <!-- Status / slots panel -->
+    <aside class="rightbar" id="rightbar">
+      <h3>Status</h3>
+      <p>No active recordings</p>
+    </aside>
+
+    <div class="rightbar-toggle-wrapper">
+      <button id="toggle-rightbar" class="toggle-rightbar-btn" aria-label="Toggle side panel">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sources.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/schedules.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/recordings.js') }}"></script>
+</body>
+</html>
