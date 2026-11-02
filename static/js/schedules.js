@@ -12,6 +12,7 @@ async function loadSchedules() {
   const container = document.getElementById('content');
 
   let html = `
+    ${backToCamerasHtml()}
     <div class="page-head">
       <div>
         <div class="eyebrow">Weekly plan</div>

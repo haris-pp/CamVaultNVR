@@ -118,6 +118,7 @@ window.skip_duration = skipDuration;
 
   const container = document.getElementById('content');
   container.innerHTML = `
+    ${backToCamerasHtml()}
     <div class="video-container">
       <video id="video-player" class="video-js" controls preload="auto" width="100%" height="auto" data-setup='{"playbackRates": [0.5, 1, 1.5, 2]}'>
         <p class="vjs-no-js">To view this video, enable JavaScript and consider upgrading to a web browser that supports HTML5 video.</p>

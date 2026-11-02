@@ -61,6 +61,24 @@ async function loadHome() {
 }
 
 
+/* ---------- Page navigation helpers ---------- */
+// Go to a page by clicking its top-menu link, so the highlight, side panels and page loader all stay in step.
+function goTo(page) {
+  const link = [...document.querySelectorAll('.topbar nav a')]
+    .find(a => a.textContent.trim().toLowerCase() === String(page).toLowerCase());
+  if (link) link.click();
+}
+
+// "Back to Cameras" button shown at the top of the Schedules and Recordings pages
+function backToCamerasHtml() {
+  return `<div class="back-row">
+    <button type="button" class="btn btn--sm back-btn" onclick="goTo('cameras')" aria-label="Back to Cameras">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Cameras
+    </button>
+  </div>`;
+}
+
 /* ---------- Menu Click Handler ---------- */
 document.querySelectorAll('.topbar nav a').forEach(link => {
   link.addEventListener('click', function () {
