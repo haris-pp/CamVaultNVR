@@ -320,7 +320,7 @@ Issues and pull requests are welcome. Please keep changes focused, describe how 
 
 ## License
 
-Copyright (C) 2026 YOUR NAME
+Copyright (C) 2026 Haris
 
 CamVault NVR is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License, version 3** (LGPL-3.0). It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
 
