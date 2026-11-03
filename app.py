@@ -15,6 +15,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from collections import defaultdict
 from daily_jobs import setup_daily_jobs
+import daily_jobs
+import settings_api
+import playback_api
 from transcoding_job import setup_transcoding_job
 from logging.handlers import TimedRotatingFileHandler
 from init_db import init_db
@@ -26,15 +29,43 @@ import sys  # Add this
 
 from ffmpeg_supervisor import ffmpeg_supervisor, start_gap_checker, _mark_started
 import go2rtc_client  # optional live-view gateway (go2rtc)
+import go2rtc_launcher  # starts/stops go2rtc together with the app
 
-scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+# ------------------- Mode and data location -------------------
+# Relative paths (Logs, RECORD, templates, the database) always mean the project folder,
+# whatever folder the app was started from.
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+# Demo mode (off by default): `python app.py --demo` or CAMVAULT_DEMO=1.
+# It uses simulated cameras and keeps EVERYTHING in dev/demo_data/ (own database, own recordings),
+# so it can never touch real cameras or real recordings. See dev/README.md.
+DEMO = "--demo" in sys.argv or os.environ.get("CAMVAULT_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
+DEMO_DIR = "dev/demo_data"
+
+def _schedule_timezone():
+    """Time zone of the weekly schedules: this computer's own, unless CAMVAULT_TZ says otherwise (e.g. Europe/Berlin)."""
+    name = os.environ.get("CAMVAULT_TZ", "").strip()
+    if name:
+        return name
+    try:
+        from tzlocal import get_localzone
+        return get_localzone()
+    except Exception as exc:
+        print(f"WARNING: could not detect this computer's time zone ({exc}). Schedules use UTC - "
+              "set CAMVAULT_TZ=Continent/City (for example Europe/Berlin) to fix that.", file=sys.stderr)
+        return "UTC"
+
+
+scheduler = BackgroundScheduler(timezone=_schedule_timezone())
 scheduler.start()
 
 
 
 
 app = Flask(__name__)
-DB = "app_database.db"
+# The database holds camera addresses INCLUDING their passwords - it is git-ignored, never commit it.
+# CAMVAULT_DB can point somewhere else (e.g. another disk).
+DB = f"{DEMO_DIR}/app_database.db" if DEMO else (os.environ.get("CAMVAULT_DB") or "app_database.db")
 
 active_recordings = {}
 recording_schedules = {}
@@ -52,9 +83,10 @@ thread_local = threading.local()
 log_dir = "Logs"
 os.makedirs(log_dir, exist_ok=True)
 
-# Detect environment
-is_dev_mode = os.environ.get("FLASK_ENV") != "production"
-is_flask_reloader = os.environ.get("WERKZEUG_RUN_MAIN") != "true"
+# Log files: by default one rotating file per day (Logs/recorder_app.log, 30 days kept).
+# FLASK_ENV=development writes a new time-stamped file at every start instead.
+is_dev_mode = os.environ.get("FLASK_ENV") == "development"
+is_flask_reloader = False   # app.run(use_reloader=False): there is never a second (reloader) process
 
 # Skip file logging for Flask reloader process in development
 if is_dev_mode and is_flask_reloader:
@@ -146,6 +178,16 @@ def get_setting(key, default=None):
 def set_setting(key, value):
     execute_db("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
 
+settings_api.init(app, get_setting, set_setting, scheduler, daily_jobs, DB)
+
+# Playback page (recorded days, 24-hour slider data, playlists). The helpers are looked up when a request
+# arrives, so they can be defined further down this file.
+playback_api.init(
+    app, get_setting, query_db,
+    user_folder=lambda sid: get_user_session_folder(sid),
+    needs_transcoding=lambda path: needs_transcoding(path),
+)
+
 
 def update_recording_status_on_schedule_db(source_id, status, msg="", pid=0):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -173,6 +215,7 @@ def stop_recording(schedule_data):
             return
 
         process = info["process"]
+        info["stopping"] = True     # tells ffmpeg_supervisor this exit is on purpose, not a crash
 
         if process.poll() is None:  # still running
             logger.info(f"Stopping recording for {source_id} at {datetime.now()}")
@@ -194,31 +237,9 @@ def stop_recording(schedule_data):
         active_recordings.pop(source_id, None)
 
 
-def detect_stream_codec(source_url):
-    """Detect video codec of a live stream using ffprobe"""
-    try:
-        result = subprocess.check_output([
-            'ffprobe', '-v', 'error',
-            '-timeout', '10000000',
-            '-select_streams', 'v:0',
-            '-show_entries', 'stream=codec_name',
-            '-of', 'default=noprint_wrappers=1:nokey=1',
-            source_url
-        ], timeout=15).decode().strip().lower()
-        logger.info(f"Detected stream codec: {result} for {source_url}")
-        return result
-    except Exception as e:
-        logger.warning(f"ffprobe codec detection failed for {source_url}: {e}")
-        return None
-
-def get_aspect_ratio_bsf(codec):
-    """Return correct aspect ratio bitstream filter args based on codec"""
-    if codec == 'h264':
-        return ["-bsf:v", "h264_metadata=sample_aspect_ratio=16/9"]
-    elif codec == 'mpeg2video':
-        return ["-bsf:v", "mpeg2_metadata=display_aspect_ratio=16/9"]
-    else:
-        return []  # hevc or unknown — skip       
+# The recording is a straight copy of the camera stream, so it keeps the camera's own picture shape.
+# (An earlier version forced sample_aspect_ratio=16/9 here. That is the shape of one PIXEL, not of the
+# picture, so a normal 16:9 camera was stored as a 3.2:1 picture and looked stretched in every player.)
 
 def start_recording(schedule_data,multiDay):
     # 1 Same source_id already running → skip
@@ -245,7 +266,7 @@ def start_recording(schedule_data,multiDay):
             break  # only one source should exist     
     
     
-    base_folder = get_setting("recording_folder", "/mnt/RECORD")  # Match command's base folder
+    base_folder = get_setting("recording_folder", "RECORD")  # Match command's base folder
     chunk_duration = int(get_setting("chunk_duration", 20))  # Match command's hls_time
     duration = str(chunk_duration)
 
@@ -272,9 +293,6 @@ def start_recording(schedule_data,multiDay):
         logging.info(f"Pre-created tomorrow's folder: {tomorrow_folder}")
     
 
-    codec = detect_stream_codec(source_url)
-    aspect_bsf = get_aspect_ratio_bsf(codec)
-
     #cpu recording command
     cmd = [
         "ffmpeg",
@@ -290,10 +308,6 @@ def start_recording(schedule_data,multiDay):
         # Copy streams (no re-encode)
         "-c:v", "copy",
         "-c:a", "copy",
-
-        # Fix display aspect ratio (metadata only, no transcode)
-        *aspect_bsf,   # ← correct BSF injected based on codec
-        
 
         # HLS settings
         "-f", "hls",
@@ -342,7 +356,6 @@ def start_recording(schedule_data,multiDay):
         "-b:a", "128k",
         "-af", "aresample=async=1",
 
-        "-aspect", "16:9",
         "-f", "hls",
         "-hls_time", duration,
         "-hls_list_size", "0",
@@ -383,6 +396,70 @@ def start_recording(schedule_data,multiDay):
         recording_schedules[source_id] = (schedule_data, multiDay)  
 
     update_recording_status_on_schedule_db(source_id,"running","Recording started successfully",pid=process.pid)
+
+
+# ------------- Apply Settings to cameras that are recording right now -------------
+# ffmpeg gets its folder and segment length when it starts, so a camera that is already
+# recording keeps the old ones until it is restarted. These two helpers back the
+# "Switch now" button on the Settings page.
+def recording_config_outdated():
+    """Cameras recording right now with an older folder or segment length than the Settings page."""
+    base_folder = get_setting("recording_folder", "RECORD")
+    chunk_duration = int(get_setting("chunk_duration", 20))
+    with recording_lock:
+        running = list(active_recordings.items())
+
+    outdated = []
+    for source_id, info in running:
+        if info["process"].poll() is not None or info.get("stopping"):
+            continue
+        entry = recording_schedules.get(source_id)
+        if not entry:
+            continue
+        schedule_data = entry[0]
+        wanted = os.path.join(base_folder, schedule_data["record_folder_name"])
+        folder_changed = os.path.abspath(info["output_dir"]) != os.path.abspath(wanted)
+        length_changed = int(info["hls_time"]) != chunk_duration
+        if folder_changed or length_changed:
+            outdated.append({
+                "source_id": source_id,
+                "name": schedule_data.get("source_name") or str(source_id),
+                "folder_changed": folder_changed,
+                "length_changed": length_changed,
+            })
+    return outdated
+
+
+def restart_outdated_recordings():
+    """Stop and start again every outdated camera (all at the same time, so each is only off for a few seconds)."""
+    result = {"restarted": [], "failed": []}
+    result_lock = threading.Lock()
+
+    def work(item):
+        source_id, name = item["source_id"], item["name"]
+        entry = recording_schedules.get(source_id)
+        ok = False
+        if entry:
+            schedule_data, multi_day = entry
+            try:
+                stop_recording(schedule_data)
+                start_recording(schedule_data, multi_day)
+                ok = source_id in active_recordings
+            except Exception as e:
+                logger.error("Could not restart recording for %s: %s", name, e)
+        with result_lock:
+            result["restarted" if ok else "failed"].append(name)
+
+    threads = [threading.Thread(target=work, args=(item,), daemon=True) for item in recording_config_outdated()]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=90)
+    logger.info("Applied settings to running cameras: restarted=%s failed=%s", result["restarted"], result["failed"])
+    return result
+
+
+settings_api.set_recorder(outdated=recording_config_outdated, restart=restart_outdated_recordings)
 
 
 #--------------------schedule logic--------------------
@@ -737,7 +814,7 @@ def ffmpeg_supervisor():
 # ------------------- Flask Routes -------------------
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", demo=DEMO)
 
 @app.route("/api/cameras", methods=["GET", "POST", "DELETE"])
 def api_cameras():
@@ -1027,6 +1104,7 @@ def api_live_config():
     return jsonify({
         "available": go2rtc_client.is_up(),
         "base": f"http://{host}:{go2rtc_client.PUBLIC_PORT}",
+        "demo": DEMO,
     })
 
 
@@ -1038,24 +1116,7 @@ def api_live_sync():
     return jsonify({"registered": done, "total": len(rows)})
 
 
-@app.route("/api/settings", methods=["GET", "POST"])
-def api_settings():
-    if request.method == "GET":
-        settings = {
-            "recording_folder": get_setting("recording_folder"),
-            "chunk_duration": get_setting("chunk_duration"),
-            "skip_duration": get_setting("skip_duration")
-
-        }
-        return jsonify(settings)
-    if request.method == "POST":
-        data = request.get_json()
-        set_setting("recording_folder", data["recording_folder"])
-        set_setting("chunk_duration", str(data["chunk_duration"]))
-        set_setting("skip_duration", str(data["skip_duration"]))
-
-        logger.info(f"⚙️ Settings updated: folder={data['recording_folder']}, skip_duration={data['skip_duration']}, chunk={data['chunk_duration']}s")
-        return jsonify({"status": "updated"})    
+# /api/settings (+ folder check, storage, system) lives in settings_api.py
 
 # ------------------- Recordings API and Serving -------------------
 
@@ -1190,7 +1251,7 @@ def generate_m3u8(date_folder_path, files, output_m3u8, thumbnail_path,rec_sessi
 
     max_duration = 1.0
     segment_lines = []
-    recording_folder = get_setting("recording_folder", "/mnt/RECORD")
+    recording_folder = get_setting("recording_folder", "RECORD")
     recording_root = Path(recording_folder)
   
     # === Generate the M3U8 playlist ===
@@ -1239,7 +1300,7 @@ def serve_recording(filename):
         return "Invalid path", 400
 
     project_root = Path.cwd()
-    recording_root = Path(get_setting("recording_folder", "/mnt/recordings"))
+    recording_root = Path(get_setting("recording_folder", "RECORD"))
 
     # 1️⃣ If playlist / temp file → project directory
     project_path = project_root / filename
@@ -1322,7 +1383,7 @@ def api_recording_slots():
     """Generate 1-hour max continuous recording slots for given source/date."""
     logging.info("=== /api/recording_slots called ===")
 
-    recording_folder = get_setting("recording_folder", "/mnt/RECORD")
+    recording_folder = get_setting("recording_folder", "RECORD")
     source_filter = request.args.get("source")
     date_filter = request.args.get("date")
     user_session_id = request.args.get("session_id")
@@ -1421,7 +1482,7 @@ def api_recordings():
     """List recordings filtered by source, date, and optional time range."""
     logging.info("=== /api/recordings called ===")
 
-    recording_folder = get_setting("recording_folder", "/mnt/RECORD")
+    recording_folder = get_setting("recording_folder", "RECORD")
     source_filter = request.args.get("source")
     date_filter = request.args.get("date")
     from_sec = request.args.get("from", type=int)
@@ -1475,15 +1536,16 @@ def api_recordings():
     if to_sec is None:
         to_sec = 24 * 3600
 
-    start_time = datetime.strptime("00-00-00", "%H-%M-%S") + timedelta(seconds=from_sec)
-    end_time = datetime.strptime("00-00-00", "%H-%M-%S") + timedelta(seconds=to_sec)
+    logging.info(f"Filtering between {from_sec}s and {to_sec}s of the day")
 
-    logging.info(f"Filtering between {start_time.time()} and {end_time.time()}")
+    # Filter files within range. Compared as seconds of the day: comparing clock times broke when the
+    # range ended at midnight (to=86400), which matched nothing.
+    def _sec_of_day(t):
+        return t.hour * 3600 + t.minute * 60 + t.second
 
-    # Filter files within range
     filtered_files = [
         f for f, rec_session_id, dur, t in parsed_files
-        if start_time.time() <= t.time() <= end_time.time()
+        if from_sec <= _sec_of_day(t) <= to_sec
     ]
 
     if not filtered_files:
@@ -1533,7 +1595,7 @@ def api_download_video():
     """
     logging.info("=== /api/download_video called ===")
 
-    recording_folder = get_setting("recording_folder", "/mnt/RECORD")
+    recording_folder = get_setting("recording_folder", "RECORD")
     source_filter = request.args.get("source")
     date_filter = request.args.get("date")
     from_sec = request.args.get("from", type=int)
@@ -1646,54 +1708,34 @@ def api_download_video():
             abs_path = os.path.abspath(concat_path)
             concat_file.write(f"file '{Path(abs_path).as_posix()}'\n")
 
-    '''cmd_concat = [
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", concat_list_path,
-        "-c", "copy",
-        str(output_mp4)
-    ]'''
+    # How the MP4 is made. Cameras that send H.264 (almost all IP cameras) are simply copied into an MP4:
+    # instant and lossless, and it works on every computer. Other codecs (MPEG-2 from TV / multicast sources)
+    # are converted to H.264 so browsers can play the file: on an NVIDIA GPU when there is one, else on the CPU.
+    def _concat_cmd(video_args, audio_args):
+        return ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list_path,
+                "-map", "0:v:0", "-map", "0:a?", *video_args, *audio_args,
+                "-movflags", "+faststart", str(output_mp4)]
 
-    '''
-    cmd_concat_cpu = [
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", concat_list_path,
-        "-map", "0:v:0",
-        "-map", "0:a?",
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "23",
-        "-c:a", "aac",
-        "-movflags", "+faststart",
-        str(output_mp4)
-    ]
-    '''
-    cmd_concat_gpu = [
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", concat_list_path,
-        # map streams
-        "-map", "0:v:0",
-        "-map", "0:a?",
-        # NVIDIA GPU encoding
-        "-c:v", "h264_nvenc",
-        "-preset", "p4",          # p1 fastest, p7 best quality
-        "-rc", "vbr",
-        "-cq", "23",               # quality (lower = better)
-        "-b:v", "0",
-        # audio
-        "-c:a", "aac",
-        # streaming friendly
-        "-movflags", "+faststart",
-        str(output_mp4)
-    ]
+    cmd_concat_copy = _concat_cmd(["-c:v", "copy"], ["-c:a", "copy"])
+    cmd_concat_gpu = _concat_cmd(["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "23", "-b:v", "0"],
+                                 ["-c:a", "aac"])
+    cmd_concat_cpu = _concat_cmd(["-c:v", "libx264", "-preset", "fast", "-crf", "23"], ["-c:a", "aac"])
 
-    cmd_concat = cmd_concat_gpu
+    try:
+        convert_first = needs_transcoding(selected_files[0][0])
+    except Exception:
+        convert_first = False
+    attempts = ([("GPU", cmd_concat_gpu), ("CPU", cmd_concat_cpu)] if convert_first
+                else [("copy", cmd_concat_copy), ("GPU", cmd_concat_gpu), ("CPU", cmd_concat_cpu)])
 
-    logging.info(f"Running FFmpeg concat: {' '.join(cmd_concat)}")
-    result = subprocess.run(cmd_concat, capture_output=True, text=True)
-    if result.returncode != 0:
+    result = None
+    for how, cmd_concat in attempts:
+        logging.info(f"Running FFmpeg concat ({how}): {' '.join(cmd_concat)}")
+        result = subprocess.run(cmd_concat, capture_output=True, text=True)
+        if result.returncode == 0:
+            break
+        logging.warning(f"FFmpeg concat ({how}) failed, trying the next way: {result.stderr[-300:]}")
+    if result is None or result.returncode != 0:
         logging.error(f"FFmpeg concat failed: {result.stderr}")
         return jsonify({"error": "Failed to create MP4", "details": result.stderr}), 500
 
@@ -1745,12 +1787,12 @@ def system_stats():
     # System stats (unchanged)
     cpu = psutil.cpu_percent(interval=0.3)
     ram = psutil.virtual_memory().percent
-    record_folder = get_setting("recording_folder", "/mnt/RECORD") 
-    disk = shutil.disk_usage(record_folder)
+    record_folder = get_setting("recording_folder", "RECORD") 
+    disk = shutil.disk_usage(_nearest_existing(record_folder))   # works before the first recording exists
     disk_total = disk.total
     disk_used = disk.used
     
-    disk_percent = round((disk_used / disk_total) * 100, 1)
+    disk_percent = round((disk_used / disk_total) * 100, 1) if disk_total else 0.0
     net = psutil.net_io_counters()
     #upload_mb = round(net.bytes_sent / 1024 / 1024, 2)
     #download_mb = round(net.bytes_recv / 1024 / 1024, 2)
@@ -1794,8 +1836,9 @@ def system_stats():
 
 # -------- Run DB init if needed --------
 if not os.path.exists(DB):
-    logger.info("Database not found — running init_db.py...")
-    init_db()
+    logger.info("Database not found — creating %s", DB)
+    os.makedirs(os.path.dirname(os.path.abspath(DB)), exist_ok=True)
+    init_db(DB, recording_folder=f"{DEMO_DIR}/RECORD" if DEMO else "RECORD")
 
 # -------- Small schema migration for databases created before live view existed --------
 def migrate_db():
@@ -1806,14 +1849,38 @@ def migrate_db():
 
 migrate_db()
 
+
+def _nearest_existing(path):
+    """The folder itself, or the closest parent that exists (disk statistics need a real path)."""
+    p = Path(path).expanduser().resolve()
+    while not p.exists() and p != p.parent:
+        p = p.parent
+    return p
+
+
+def ensure_recording_folder():
+    """Create the recordings folder at start-up, so a fresh install has it before the first recording."""
+    folder = get_setting("recording_folder", "RECORD")
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError as exc:
+        logger.warning("Could not create the recordings folder %s: %s - change it in Settings > Storage", folder, exc)
+
+
+ensure_recording_folder()
+
    
 # ------------------- Main -------------------
 
 if __name__ == "__main__":
-    # Start go2rtc + fake test cameras (and add them to Sources). They stop again when the app exits.
-    # Set the environment variable CAMVAULT_DEV=0 to disable this (real cameras only).
-    from tools import dev_stack
-    dev_stack.start_all(query_db, execute_db)
+    # Live view: starts go2rtc next to the app if it is installed (go2rtc/go2rtc[.exe]); stops it on exit.
+    # Not installed = live view off, everything else works. CAMVAULT_GO2RTC=0 never starts it.
+    go2rtc_launcher.start()
+
+    # Demo mode only: simulated cameras + their own database. Nothing of this runs in a normal start.
+    if DEMO:
+        from dev import demo_stack
+        demo_stack.start(query_db, execute_db)
 
     threading.Thread(target=resume_running_recordings, daemon=True).start()
 
@@ -1848,9 +1915,15 @@ if __name__ == "__main__":
     
     
 
-    logger.info(" Starting Flask app on http://0.0.0.0:5000")
+    # CAMVAULT_HOST=127.0.0.1 keeps the app reachable from this computer only; CAMVAULT_PORT changes the port.
+    host = os.environ.get("CAMVAULT_HOST", "0.0.0.0")
+    port = int(os.environ.get("CAMVAULT_PORT", "5000"))
+    logger.info(" Starting Flask app on http://%s:%s%s", host, port, "   [DEMO MODE]" if DEMO else "")
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        logger.warning(" There is no login: anyone who can reach this computer on port %s can watch and delete "
+                       "recordings. Use a trusted network only (CAMVAULT_HOST=127.0.0.1 limits it to this computer).", port)
     try:
-        app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+        app.run(host=host, port=port, debug=False, use_reloader=False)
     finally:
         # Close all thread-local connections
         if hasattr(thread_local, "db_conn"):

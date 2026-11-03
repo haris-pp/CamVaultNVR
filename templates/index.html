@@ -29,7 +29,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/cameras.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/schedules.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/recordings.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/playback.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+  {% if demo %}<style>.demo-badge{font:800 11px/1 "DM Mono",monospace;letter-spacing:.08em;padding:4px 7px;border-radius:6px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;align-self:center}</style>{% endif %}
 </head>
 <body>
 
@@ -39,12 +41,14 @@
       <div class="brand">
         <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="#0f172a"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>
         CamVault
+        {% if demo %}<span class="demo-badge" title="Demo mode: simulated cameras and a separate database. Start the app without --demo for normal use.">DEMO</span>{% endif %}
       </div>
       <nav class="nav" aria-label="Main">
         <a href="#" class="active" onclick="loadHome()">Home</a>
         <a href="#" onclick="loadCameras()">Cameras</a>
         <a href="#" onclick="loadSchedules()">Schedules</a>
-        <a href="#" onclick="intRecordingPage()">Recordings</a>
+        <a href="#" onclick="intRecordingPage()">Download</a>
+        <a href="#" onclick="loadPlayback()">Playback</a>
         <a href="#" onclick="loadSettings()">Settings</a>
       </nav>
     </div>
@@ -59,7 +63,7 @@
 
   <div class="layout">
 
-    <!-- Cameras panel (shown on the Recordings page) -->
+    <!-- Cameras panel (shown on the Download page) -->
     <aside class="channel_sidebar" id="channel_sidebar">
       <h3>Cameras</h3>
       <div class="channel-search">
@@ -98,5 +102,6 @@
   <script src="{{ url_for('static', filename='js/schedules.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/recordings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/playback.js') }}"></script>
 </body>
 </html>

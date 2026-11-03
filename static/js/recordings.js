@@ -1,4 +1,4 @@
-/*--------------------------Recordings section---------------------------
+/*--------------------------Download section (page file: recordings.js)---------------------------
   Layout: camera rail | player + timeline dock | sessions + clips panel.
   - The player is sized to the free height, so nothing needs scrolling.
   - One 24-hour timeline does both jobs: the blue band is the range to play
@@ -8,7 +8,12 @@
   The backend API is unchanged.
 -----------------------------------------------------------------------*/
 
-const MAX_RANGE = 7200;      // longest range played in one go (2 hours)
+let MAX_RANGE = 7200;        // longest range played in one go (Settings > Playback, default 2 hours)
+let REC_24H = false;         // time format (Settings > Playback)
+let REC_SPEED = 1;           // default playback speed (Settings > Playback)
+
+// "2 h" / "1 h" / "4 h" for the current MAX_RANGE
+const recMaxLabel = () => (MAX_RANGE / 3600) + ' h';
 const DAY_SEC = 86400;
 
 // Words shown in the UI for what the API calls "slots". Change them here.
@@ -48,6 +53,7 @@ function secondsToAmPm(sec) {
   const h24 = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
+  if (REC_24H) return `${String(h24 % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   const h12 = h24 % 12 || 12;
   const ampm = h24 < 12 ? 'AM' : 'PM';
   return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} ${ampm}`;
@@ -66,6 +72,7 @@ function timeStringToSeconds(t) {
 function recClock(sec) {                       // 9:18 PM
   const h24 = Math.floor(sec / 3600) % 24;
   const m = Math.floor((sec % 3600) / 60);
+  if (REC_24H) return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   return `${h24 % 12 || 12}:${String(m).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
 }
 
@@ -139,6 +146,11 @@ async function intRecordingPage() {
   if (isNaN(skipDuration) || skipDuration <= 0) skipDuration = 10;
   window.skip_duration = skipDuration;
 
+  // Settings > Playback
+  MAX_RANGE = [3600, 7200, 14400].includes(Number(data.max_play_range)) ? Number(data.max_play_range) : 7200;
+  REC_24H = data.time_format === '24h';
+  REC_SPEED = [0.5, 1, 1.5, 2].includes(Number(data.default_speed)) ? Number(data.default_speed) : 1;
+
   const ticks = [0, 3, 6, 9, 12, 15, 18, 21].map(h =>
     `<span style="left:${h / 24 * 100}%">${String(h).padStart(2, '0')}:00</span>`).join('');
 
@@ -195,7 +207,7 @@ async function intRecordingPage() {
           </div>
           <span class="rec-len" id="rec-len">No range</span>
           <div class="rec-actions">
-            <button type="button" class="btn" id="rec-play-range" disabled>Play range</button>
+            <button type="button" class="btn" id="rec-play-range" disabled>Preview range</button>
             <button type="button" class="btn btn--primary" id="rec-add" disabled>+ Add to clips</button>
           </div>
         </div>
@@ -229,6 +241,8 @@ async function intRecordingPage() {
     },
     userActions: { hotkeys: true }
   });
+  player.defaultPlaybackRate(REC_SPEED);   // every new recording starts at the speed chosen in Settings
+  player.playbackRate(REC_SPEED);
 
   player.ready(function () {
     this.hotkeys({
@@ -478,7 +492,7 @@ function recRenderSel() {
     if (document.activeElement !== inEl) inEl.value = recInputTime(sel.from);
     if (document.activeElement !== outEl) outEl.value = recInputTime(sel.to);
     const long = (sel.to - sel.from) > MAX_RANGE;
-    len.textContent = recDuration(sel.to - sel.from) + (long ? ' · plays first 2 h' : '');
+    len.textContent = recDuration(sel.to - sel.from) + (long ? ` · plays first ${recMaxLabel()}` : '');
     len.classList.toggle('is-warn', long);
   } else {
     inEl.value = outEl.value = '';
@@ -569,7 +583,7 @@ function recPlayRange() {
   }
   const fromSec = rec.sel.from;
   const toSec = Math.min(rec.sel.to, fromSec + MAX_RANGE);
-  if (rec.sel.to > toSec) recNote('Playing the first 2 hours of the range');
+  if (rec.sel.to > toSec) recNote(`Playing the first ${recMaxLabel()} of the range`);
   window.player.getChild('OverlayMessage').setMessage('Loading recordings...');
   loadAndPlaySlot(source, date, fromSec, toSec, true);
 }
@@ -987,7 +1001,7 @@ document.getElementById('channelSearchInput')?.addEventListener('input', e => {
 /*--------------------------Keyboard----------------------------*/
 // Arrow keys / space / F work even when the player doesn't have focus. I and O mark In / Out.
 document.addEventListener('keydown', function (e) {
-  if (typeof currentPage !== 'undefined' && currentPage !== 'recordings') return;
+  if (typeof currentPage !== 'undefined' && currentPage !== 'download') return;
 
   const player = window.player;
   if (!player || !player.el()) return;

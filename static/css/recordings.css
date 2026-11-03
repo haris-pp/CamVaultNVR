@@ -1,7 +1,7 @@
-/* Recordings page: camera rail | player + timeline dock | sessions + clips.
+/* Download page: camera rail | player + timeline dock | sessions + clips.
    Everything fits one screen: the player is sized to the free height and takes the footage's own aspect ratio. */
 
-/* ---------- Page frame (rec-mode is set on .layout while Recordings is open) ---------- */
+/* ---------- Page frame (rec-mode is set on .layout while Download is open) ---------- */
 .layout.rec-mode { padding: 20px; gap: 16px; --rightbar-w: 320px; }
 .layout.rec-mode .main { overflow-y: auto; }
 .layout.rec-mode .content { max-width: none; height: 100%; padding: 0; }

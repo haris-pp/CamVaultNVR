@@ -1,4 +1,10 @@
 @echo off
-rem Starts CamVault NVR. The app itself starts go2rtc and the test cameras (see tools\dev_stack.py).
+rem CamVault NVR - normal start (your real cameras).
+rem go2rtc (live view) is started by the app itself when it is installed: python scripts\get_binaries.py
 cd /d "%~dp0"
-python app.py
+title CamVault NVR
+if exist ".venv\Scripts\python.exe" (set "PY=.venv\Scripts\python.exe") else (set "PY=python")
+"%PY%" app.py
+echo.
+echo CamVault has stopped.
+pause

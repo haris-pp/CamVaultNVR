@@ -1,7 +1,8 @@
 import sqlite3
 
-def init_db():
-    conn = sqlite3.connect("app_database.db")
+def init_db(path="app_database.db", recording_folder="RECORD"):
+    """Create the tables and default settings in the SQLite file `path` (safe to run on an existing file)."""
+    conn = sqlite3.connect(path)
     c = conn.cursor()
 
     # Table for sources
@@ -42,7 +43,7 @@ def init_db():
 
     # Insert defaults if not exist
     defaults = [
-        ("recording_folder", "RECORD"),
+        ("recording_folder", recording_folder),
         ("chunk_duration", "10")
     ]
     for key, value in defaults:
@@ -50,7 +51,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print("Database and tables created (input_sources + schedules + settings).")
+    print(f"Database ready: {path} (input_sources + schedules + settings).")
 
 # Allow running standalone
 if __name__ == "__main__":

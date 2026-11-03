@@ -15,7 +15,10 @@ scheduler = None
 logger = logging.getLogger(__name__)
 
 def get_disk_usage_percent(path):
-    total, used, free = shutil.disk_usage(path)
+    p = Path(path).expanduser().resolve()
+    while not p.exists() and p != p.parent:        # the folder may not exist yet: measure the disk it will be on
+        p = p.parent
+    total, used, free = shutil.disk_usage(p)
     return round((used / total) * 100, 2)
 
 def cleanup_old_playlists(base_folder):
@@ -108,6 +111,72 @@ def recycle_until_disk_ok(base_folder, max_percent=85):
             f"Disk usage successfully reduced to {current_usage}%"
         )
 
+def _setting_int(key, default, lo, hi):
+    try:
+        n = int(float(get_setting(key, default)))
+    except (TypeError, ValueError):
+        n = default
+    return max(lo, min(hi, n))
+
+
+def _setting_bool(key, default):
+    raw = get_setting(key, None)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+
+def cleanup_user_data():
+    """Delete the temporary folders where trimmed clips are prepared, once they are older than the keep time."""
+    if get_setting is None:
+        return
+    keep_seconds = _setting_int("download_keep_minutes", 60, 5, 1440) * 60
+    root = Path.cwd() / "user_data"
+    if not root.exists():
+        return
+    now = time.time()
+    for folder in list(root.iterdir()):
+        if folder.is_dir():
+            try:
+                if now - folder.stat().st_mtime > keep_seconds:
+                    shutil.rmtree(folder)
+                    logger.info(f"Deleted old session folder: {folder.name}")
+            except Exception as e:
+                logger.warning(f"Could not delete {folder}: {e}")
+
+
+def parse_times(text):
+    out = []
+    for t in str(text or "").split(","):
+        t = t.strip()
+        try:
+            h, m = t.split(":")
+            h, m = int(h), int(m)
+        except ValueError:
+            continue
+        if 0 <= h < 24 and 0 <= m < 60 and (h, m) not in out:
+            out.append((h, m))
+    return sorted(out)
+
+
+def apply_cleanup_times(times):
+    """(Re)schedule the disk clean-up at the given 'HH:MM' times. Called at start-up and when Settings are saved."""
+    if scheduler is None:
+        return
+    for job in scheduler.get_jobs():
+        if job.id.startswith("daily_job_"):
+            job.remove()
+    for h, m in parse_times(",".join(times)):
+        scheduler.add_job(
+            daily_job,
+            trigger=CronTrigger(hour=h, minute=m),
+            id=f"daily_job_{h:02d}{m:02d}",
+            name=f"Daily Job - {h:02d}:{m:02d}",
+            replace_existing=True
+        )
+    logger.info("Clean-up times: " + (", ".join(f"{h:02d}:{m:02d}" for h, m in parse_times(",".join(times))) or "none"))
+
+
 def daily_job():
     global get_setting, query_db
     logger.info("========== DAILY JOB STARTED ==========")
@@ -117,7 +186,7 @@ def daily_job():
         return
 
     # === Part 1: Create tomorrow's folder for ongoing multi-day recordings ===
-    base_folder = get_setting("recording_folder", "/mnt/RECORD")
+    base_folder = get_setting("recording_folder", "RECORD")
     running_schedules = query_db("SELECT * FROM schedules WHERE status != 'completed'")
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
@@ -154,23 +223,15 @@ def daily_job():
             logger.error(f"[ERROR] Failed to process schedule {sched.get('id', 'unknown')}: {e}")
 
 
-    # === Part 2: Delete user session folders older than 1 hour ===
-    USER_DATA_ROOT = Path.cwd() / "user_data"
-    if USER_DATA_ROOT.exists():
-        current_time = time.time()
-        for folder in list(USER_DATA_ROOT.iterdir()):
-            if folder.is_dir():
-                try:
-                    mtime = folder.stat().st_mtime
-                    if current_time - mtime > 3600:  # 1 hour
-                        shutil.rmtree(folder)
-                        logger.info(f"Deleted old session folder: {folder.name}")
-                except Exception as e:
-                    logger.warning(f"Could not delete {folder}: {e}")
+    # === Part 2: Delete prepared download folders that are past their keep time ===
+    cleanup_user_data()
 
-    # === Part 3 Recycle recording ts file old date ==
-    recycle_thr =  85
-    recycle_until_disk_ok(base_folder, recycle_thr)
+    # === Part 3: Recycle the oldest recordings when the disk is above the limit (Settings > Storage) ===
+    if _setting_bool("auto_clean_enabled", True):
+        limit = _setting_int("disk_limit_percent", 85, 50, 95)
+        recycle_until_disk_ok(base_folder, limit)
+    else:
+        logger.info("Automatic clean-up is off. Skipping disk recycle.")
     cleanup_old_playlists(base_folder)
 
 
@@ -183,19 +244,15 @@ def setup_daily_jobs(main_get_setting, main_query_db, main_scheduler):
 
     #daily_job()
 
-    # Schedule the job twice daily: 5 AM and 10 PM
+    # Clean-up times come from Settings > Storage (default 05:00 and 22:30)
+    apply_cleanup_times([f"{h:02d}:{m:02d}" for h, m in parse_times(get_setting("cleanup_times", "05:00,22:30"))])
+
+    # Prepared download folders are checked every 10 minutes so the "keep for" setting is respected
     scheduler.add_job(
-        daily_job,
-        trigger=CronTrigger(hour=5, minute=0),
-        id='daily_job_5am',
-        name='Daily Job - 5 AM',
+        cleanup_user_data,
+        trigger="interval",
+        minutes=10,
+        id='user_data_cleanup',
+        name='Delete old prepared downloads',
         replace_existing=True
     )
-    scheduler.add_job(
-        daily_job,
-        trigger=CronTrigger(hour=22, minute=30),
-        id='daily_job_10pm',
-        name='Daily Job - 10 PM',
-        replace_existing=True
-    )
-    logger.info("Daily jobs scheduled at 5:00 AM and 10:30 PM")

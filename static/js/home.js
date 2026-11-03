@@ -2,6 +2,25 @@
 let dashboardInterval = null;
 let currentPage = "home";
 
+// Settings that other pages read (the full list is saved from the Settings page)
+window.appSettings = window.appSettings || {};
+async function refreshAppSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) window.appSettings = await res.json();
+  } catch (e) { /* keep the previous values */ }
+  return window.appSettings;
+}
+function dashboardRefreshMs() {
+  const sec = Number(window.appSettings.wall_refresh_seconds);
+  return (sec >= 5 && sec <= 300 ? sec : 10) * 1000;
+}
+// Stop and start the camera-wall refresh again, so a new interval from Settings takes effect
+function restartDashboardRefresh() {
+  if (dashboardInterval) { clearInterval(dashboardInterval); dashboardInterval = null; }
+  handleDashboardRefresh();
+}
+
 // Cache DOM elements once (better performance)
 const layout   = document.querySelector('.layout');
 const rightbar = document.getElementById('rightbar');
@@ -40,9 +59,9 @@ async function loadHome() {
         <div class="storage__big"><strong id="disk-used">--</strong><span class="muted" id="disk-of">GB used</span></div>
         <div class="track track--lg" role="img" aria-label="Disk usage">
           <div class="track__fill" id="disk-bar"></div>
-          <div class="track__mark" style="left:85%"></div>
+          <div class="track__mark" id="disk-mark" style="left:85%"></div>
         </div>
-        <div class="storage__legend"><span id="disk-free">Free: -- GB</span><span>Recycle at 85%</span></div>
+        <div class="storage__legend"><span id="disk-free">Free: -- GB</span><span id="disk-limit">Recycle at 85%</span></div>
       </section>
 
       <section class="card system" id="resource-card">
@@ -69,7 +88,7 @@ function goTo(page) {
   if (link) link.click();
 }
 
-// "Back to Cameras" button shown at the top of the Schedules and Recordings pages
+// "Back to Cameras" button shown at the top of the Schedules and Download pages
 function backToCamerasHtml() {
   return `<div class="back-row">
     <button type="button" class="btn btn--sm back-btn" onclick="goTo('cameras')" aria-label="Back to Cameras">
@@ -90,10 +109,15 @@ document.querySelectorAll('.topbar nav a').forEach(link => {
 
     currentPage = this.textContent.trim().toLowerCase();
 
-    const showRightbarPages = ["recordings"];
+    const showRightbarPages = ["download"];
 
-    // Recordings uses a framed, one-screen layout
-    layout.classList.toggle('rec-mode', currentPage === 'recordings');
+    // Download and Playback use a framed, one-screen layout
+    layout.classList.toggle('rec-mode', currentPage === 'download');
+    layout.classList.toggle('pb-mode', currentPage === 'playback');
+
+    // A video must not keep playing behind another page
+    if (currentPage !== 'playback' && typeof pbLeave === 'function') pbLeave();
+    if (currentPage !== 'download' && window.player) { try { window.player.pause(); } catch (e) { /* not ready */ } }
 
     if (showRightbarPages.includes(currentPage)) {
       rightbar.classList.remove('hidden');
@@ -115,12 +139,13 @@ document.querySelectorAll('.topbar nav a').forEach(link => {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Home has no side panel; it is shown again on the Recordings page
+  // Home has no side panel; it is shown again on the Download page
   rightbar.classList.add('hidden');
   layout.classList.add('rightbar-hidden');
   toggleBtn.parentElement.style.display = 'none';
   loadHome();
-  handleDashboardRefresh(); // start interval initially
+  // Read the saved settings first, so the wall refreshes at the interval chosen in Settings
+  refreshAppSettings().then(restartDashboardRefresh);
 });
 
 
@@ -155,7 +180,7 @@ function handleDashboardRefresh() {
   if (currentPage === "home") {
     if (!dashboardInterval) {
       updateDashboard();
-      dashboardInterval = setInterval(updateDashboard, 10000);
+      dashboardInterval = setInterval(updateDashboard, dashboardRefreshMs());
       console.log("Dashboard auto-refresh started");
     }
   } else {
@@ -169,12 +194,25 @@ function handleDashboardRefresh() {
 
 
 /* ---------- Visual helpers (new UI) ---------- */
-function setMeter(id, pct) {
+function setMeter(id, pct, hotAt = 85) {
   const el = document.getElementById(id);
   if (!el) return;
   const v = Math.max(0, Math.min(100, Number(pct) || 0));
   el.style.width = v + "%";
-  el.classList.toggle("hot", v >= 85);
+  el.classList.toggle("hot", v >= hotAt);
+}
+
+// The disk limit and the automatic clean-up switch come from Settings > Storage
+function diskLimit() {
+  const n = Number(window.appSettings && window.appSettings.disk_limit_percent);
+  return n >= 50 && n <= 95 ? n : 85;
+}
+function applyDiskLimit() {
+  const on = !window.appSettings || window.appSettings.auto_clean_enabled !== false;
+  const mark = document.getElementById("disk-mark");
+  const label = document.getElementById("disk-limit");
+  if (mark) { mark.style.left = diskLimit() + "%"; mark.style.display = on ? "" : "none"; }
+  if (label) label.textContent = on ? `Recycle at ${diskLimit()}%` : "Auto-clean is off";
 }
 
 function escapeHtml(str) {
@@ -474,7 +512,8 @@ async function updateDashboard() {
     setText("ram-value", data.ram + "%");
     setMeter("cpu-bar", data.cpu);
     setMeter("ram-bar", data.ram);
-    setMeter("disk-bar", data.disk_percent);
+    setMeter("disk-bar", data.disk_percent, diskLimit());
+    applyDiskLimit();
 
     // Storage
     const used = Math.round((data.disk_total_gb - data.disk_free_gb) * 10) / 10;

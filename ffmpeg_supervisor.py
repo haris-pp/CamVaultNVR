@@ -226,7 +226,14 @@ def ffmpeg_supervisor(active_recordings, recording_schedules, recording_lock,
             exit_code = proc.returncode
 
             with recording_lock:
-                active_recordings.pop(source_id, None)
+                if active_recordings.get(source_id) is info:     # never remove a newer entry for the same camera
+                    active_recordings.pop(source_id, None)
+
+            # stop_recording() ended this one on purpose (end of a slot, or a restart after a Settings change)
+            if info.get("stopping"):
+                logger.info("[SUPERVISOR] %s was stopped on purpose", source_id)
+                _clear_restart_state(source_id)
+                continue
 
             # exit 0 or 255 (SIGTERM from stop_recording) = intentional stop
             if exit_code in (0, -15, 255):
