@@ -9,7 +9,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 ![Flask](https://img.shields.io/badge/backend-Flask-000000?logo=flask)
 ![FFmpeg](https://img.shields.io/badge/recording-FFmpeg-007808?logo=ffmpeg&logoColor=white)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![License: LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue)
 
 <img src="docs/screenshots/home.png" alt="CamVault camera wall with live snapshots, recording status and system statistics" width="900">
 
@@ -66,7 +66,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
   </tr>
 </table>
 
-<sub>Screenshots were taken in [demo mode](#demo-mode-simulated-cameras): the pictures are generated test patterns, not real footage.</sub>
+<sub>Screenshots were taken in [demo mode](#demo-mode-simulated-cameras) with simulated cameras. The camera pictures are computer-generated 3D scenes, not real footage.</sub>
 
 ## Quick start
 
@@ -320,7 +320,11 @@ Issues and pull requests are welcome. Please keep changes focused, describe how 
 
 ## License
 
-CamVault NVR is released under the [MIT License](LICENSE).
+Copyright (C) 2026 YOUR NAME
+
+CamVault NVR is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License, version 3** (LGPL-3.0). It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
+
+The licence text is in [`LICENSE`](LICENSE) (LGPL v3). The LGPL is an addition to the GNU GPL v3, so that text is included as well: [`COPYING`](COPYING). By submitting a pull request you agree that your contribution is released under the same licence.
 
 ## Third-party software
 
