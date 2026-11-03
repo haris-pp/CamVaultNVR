@@ -1,0 +1,45 @@
+# go2rtc configuration for CamVault NVR.
+# go2rtc only does the LIVE VIEW in the browser. Recording is done by the app's own FFmpeg.
+# Cameras are NOT listed here: the app registers every camera by itself while it runs
+# (so the camera list lives in one place, the Cameras page).
+
+api:
+  listen: ":1984"        # web API + player pages. Browsers on your network connect here.
+  origin: "*"            # lets the CamVault page fetch snapshots from this port
+  # This port shows camera addresses (with their passwords). Keep it on a trusted network,
+  # or ask for a login from other computers (the app itself runs on this machine and is not asked):
+  # username: admin
+  # password: change-me
+
+rtsp:
+  listen: "127.0.0.1:8554"   # local re-stream only
+
+webrtc:
+  listen: ":8555"        # allow TCP/UDP 8555 through the firewall for WebRTC (lowest delay)
+
+ffmpeg:
+  bin: ffmpeg            # used for snapshots and for optional on-demand conversion
+
+log:
+  level: info
+streams:
+  cam_12:
+    - rtsp://127.0.0.1:8654/entrance
+  cam_13:
+    - rtsp://127.0.0.1:8654/MainParking
+  cam_14:
+    - rtsp://127.0.0.1:8654/ParkingNorth
+  cam_15:
+    - rtsp://127.0.0.1:8654/ParkingSouth
+  cam_16:
+    - rtsp://127.0.0.1:8654/restaurant
+  cam_1:
+    - rtsp://127.0.0.1:8654/entrance
+  cam_2:
+    - rtsp://127.0.0.1:8654/MainParking
+  cam_3:
+    - rtsp://127.0.0.1:8654/ParkingNorth
+  cam_4:
+    - rtsp://127.0.0.1:8654/ParkingSouth
+  cam_5:
+    - rtsp://127.0.0.1:8654/restaurant
