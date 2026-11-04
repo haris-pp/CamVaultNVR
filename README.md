@@ -54,7 +54,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/playback.png" alt="Playback page with calendar and 24-hour timeline"><br><sub><b>Playback</b> — calendar, 24-hour timeline, jump between sessions</sub></td>
+    <td width="50%"><img src="docs/screenshots/settings.png" alt="Settings page"><br><sub><b>Settings</b> — storage, recording, playback, downloads, live view</sub></td>
     <td width="50%"><img src="docs/screenshots/schedules.png" alt="Weekly schedule planner"><br><sub><b>Schedules</b> — weekly planner on a 15-minute grid</sub></td>
   </tr>
   <tr>
@@ -62,7 +62,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
     <td width="50%"><img src="docs/screenshots/download.png" alt="Download page with session list and trim timeline"><br><sub><b>Download</b> — sessions, trim handles, clip queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Settings page with storage and recording options"><br><sub><b>Settings</b> — storage, recording, playback, downloads, live view</sub></td>
+    <td colspan="2"><img src="docs/screenshots/playback.png" alt="Playback page with calendar and 24-hour timeline"><br><sub><b>Playback</b> — calendar, 24-hour timeline, jump between sessions</sub></td>
   </tr>
 </table>
 
