@@ -1,9 +1,11 @@
 <div align="center">
 
-# CamVault NVR
+# RecoraCam NVR
 
-**A self-hosted network video recorder for IP cameras.**
+**A self-hosted, schedule-first network video recorder for IP cameras.**
 Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline and export clips — from any browser, with no cloud and no subscription.
+
+**[Project website](https://YOUR-USERNAME.github.io/recoracam-nvr/)**
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/backend-Flask-000000?logo=flask)
@@ -11,7 +13,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
 ![License: LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue)
 
-<img src="docs/screenshots/home.png" alt="CamVault camera wall with live snapshots, recording status and system statistics" width="900">
+<img src="docs/screenshots/home.png" alt="RecoraCam camera wall with live snapshots, recording status and system statistics" width="900">
 
 </div>
 
@@ -54,7 +56,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/playback.png" alt="Playback page with calendar and 24-hour timeline"><br><sub><b>Playback</b> — calendar, 24-hour timeline, jump between sessions</sub></td>
+    <td width="50%"><img src="docs/screenshots/settings.png" alt="Settings page"><br><sub><b>Settings</b> — storage, recording, playback, downloads, live view</sub></td>
     <td width="50%"><img src="docs/screenshots/schedules.png" alt="Weekly schedule planner"><br><sub><b>Schedules</b> — weekly planner on a 15-minute grid</sub></td>
   </tr>
   <tr>
@@ -62,7 +64,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
     <td width="50%"><img src="docs/screenshots/download.png" alt="Download page with session list and trim timeline"><br><sub><b>Download</b> — sessions, trim handles, clip queue</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Settings page with storage and recording options"><br><sub><b>Settings</b> — storage, recording, playback, downloads, live view</sub></td>
+    <td colspan="2"><img src="docs/screenshots/playback.png" alt="Playback page with calendar and 24-hour timeline"><br><sub><b>Playback</b> — calendar, 24-hour timeline, jump between sessions</sub></td>
   </tr>
 </table>
 
@@ -79,8 +81,8 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 **Install and run**
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/camvault-nvr.git
-cd camvault-nvr
+git clone https://github.com/YOUR-USERNAME/recoracam-nvr.git
+cd recoracam-nvr
 
 python -m venv .venv
 .venv\Scripts\activate              # Windows   (Linux / macOS:  source .venv/bin/activate)
@@ -100,7 +102,7 @@ Cameras are entered by hand — there is nothing to configure in files.
 
 1. Open **Cameras → + Add**.
 2. Enter a **name**, the camera's **stream address** and, optionally, a **substream address** (a lower-resolution stream, usually H.264, used for the live tiles).
-3. Press **Test connection**: CamVault opens the stream for a few seconds and tells you the codec, size and frame rate — or what is wrong ("Wrong user name or password", "stream path not found", …).
+3. Press **Test connection**: RecoraCam opens the stream for a few seconds and tells you the codec, size and frame rate — or what is wrong ("Wrong user name or password", "stream path not found", …).
 4. Save, then open **Schedules**, tick the camera and drag over the times it should record (or press **24 / 7**) and **Save schedule**. Recording starts immediately if the current time is inside the plan.
 
 **Typical RTSP addresses** (check your model's manual — paths differ between firmware versions):
@@ -113,7 +115,7 @@ Cameras are entered by hand — there is nothing to configure in files.
 | TP-Link Tapo | `rtsp://user:pass@IP:554/stream1` | `…/stream2` |
 | Generic ONVIF | the *RTSP URI* shown by your camera or by ONVIF Device Manager | |
 
-Tips: create a dedicated camera user with a password that has no special characters (`@ : / ?` in a password must be URL-encoded); set the camera to **H.264** — browsers play H.264 everywhere but H.265 only in some; and keep the camera and CamVault on a wired network if you can.
+Tips: create a dedicated camera user with a password that has no special characters (`@ : / ?` in a password must be URL-encoded); set the camera to **H.264** — browsers play H.264 everywhere but H.265 only in some; and keep the camera and RecoraCam on a wired network if you can.
 
 ## Optional components: live view and demo mode
 
@@ -121,12 +123,12 @@ Recording, schedules, playback and downloads need nothing but Python and FFmpeg.
 
 | Add-on | Default | What it is for | Enable | Disable |
 |--------|---------|----------------|--------|---------|
-| **Live view** (go2rtc) | on **if installed** | live picture on the Home page and the Cameras page | `python scripts/get_binaries.py` | `CAMVAULT_GO2RTC=0`, or delete `go2rtc/go2rtc(.exe)` |
-| **Demo mode** (simulated cameras) | **off** | try CamVault without any camera | `python app.py --demo` or `CAMVAULT_DEMO=1` | start without `--demo` · remove completely: `python dev/setup_demo.py --clean` |
+| **Live view** (go2rtc) | on **if installed** | live picture on the Home page and the Cameras page | `python scripts/get_binaries.py` | `RECORACAM_GO2RTC=0`, or delete `go2rtc/go2rtc(.exe)` |
+| **Demo mode** (simulated cameras) | **off** | try RecoraCam without any camera | `python app.py --demo` or `RECORACAM_DEMO=1` | start without `--demo` · remove completely: `python dev/setup_demo.py --clean` |
 
 ### Live view (go2rtc)
 
-[go2rtc](https://github.com/AlexxIT/go2rtc) turns the camera's RTSP stream into something a browser can show with very low delay (WebRTC). CamVault starts it together with the app, registers every camera with it automatically, and stops it on exit. You never edit a camera list for it.
+[go2rtc](https://github.com/AlexxIT/go2rtc) turns the camera's RTSP stream into something a browser can show with very low delay (WebRTC). RecoraCam starts it together with the app, registers every camera with it automatically, and stops it on exit. You never edit a camera list for it.
 
 - **Home** shows a snapshot per camera (refreshed every 10 s by default). **Click a tile** for live video; choose *Low* (substream) or *Full* (main stream).
 - Without go2rtc nothing else changes — tiles just show no picture.
@@ -134,7 +136,7 @@ Recording, schedules, playback and downloads need nothing but Python and FFmpeg.
 
 ```bash
 python scripts/get_binaries.py            # install     (Windows, Linux, macOS; Intel/AMD and ARM)
-set CAMVAULT_GO2RTC=0                     # switch off   (Linux/macOS: export CAMVAULT_GO2RTC=0)
+set RECORACAM_GO2RTC=0                     # switch off   (Linux/macOS: export RECORACAM_GO2RTC=0)
 ```
 
 ### Demo mode (simulated cameras)
@@ -206,16 +208,16 @@ Day-to-day options live on the **Settings** page. The following *environment var
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `CAMVAULT_DEMO` | off | `1` = [demo mode](#demo-mode-simulated-cameras) (same as `--demo`) |
-| `CAMVAULT_GO2RTC` | `1` | `0` = never start go2rtc |
-| `CAMVAULT_HOST` | `0.0.0.0` | address to listen on; `127.0.0.1` = this computer only |
-| `CAMVAULT_PORT` | `5000` | web port |
-| `CAMVAULT_DB` | `app_database.db` | path of the SQLite file |
-| `CAMVAULT_TZ` | this computer's time zone | time zone of the weekly schedules, e.g. `Europe/Berlin` |
+| `RECORACAM_DEMO` | off | `1` = [demo mode](#demo-mode-simulated-cameras) (same as `--demo`) |
+| `RECORACAM_GO2RTC` | `1` | `0` = never start go2rtc |
+| `RECORACAM_HOST` | `0.0.0.0` | address to listen on; `127.0.0.1` = this computer only |
+| `RECORACAM_PORT` | `5000` | web port |
+| `RECORACAM_DB` | `app_database.db` | path of the SQLite file |
+| `RECORACAM_TZ` | this computer's time zone | time zone of the weekly schedules, e.g. `Europe/Berlin` |
 | `FLASK_ENV` | production | log files in `Logs/`: by default one file per day, `recorder_app.log` (30 days kept). `development` = a new time-stamped file at every start |
 | `GO2RTC_BIN`, `GO2RTC_API`, `GO2RTC_PUBLIC_PORT` | see [`go2rtc/README.md`](go2rtc/README.md) | use a go2rtc installed or running elsewhere |
 
-Set a variable for one run — Windows: `set CAMVAULT_PORT=8080` then `python app.py`; Linux/macOS: `CAMVAULT_PORT=8080 python app.py`.
+Set a variable for one run — Windows: `set RECORACAM_PORT=8080` then `python app.py`; Linux/macOS: `RECORACAM_PORT=8080 python app.py`.
 
 **Settings page** — Storage (recording folder, automatic clean-up, disk limit, clean-up times) · Recording (segment length) · Playback (skip distance, default speed, maximum play range, 12/24-hour clock) · Downloads (how long prepared files are kept) · Live view (snapshot refresh) · System (version, FFmpeg, time zone, uptime, log file).
 
@@ -230,22 +232,22 @@ Recording is a straight copy, so disk use is simply *bit rate × time*. Look up 
 | 4 Mbit/s (1080p typical) | 1.8 GB | 43 GB | 1.3 TB |
 | 8 Mbit/s (4 MP / 4K) | 3.6 GB | 86 GB | 2.6 TB |
 
-Set the **disk limit** in Settings below what you can spare; CamVault deletes the oldest days when it is passed. Put the recording folder on a disk of its own for best results (it is never mixed with the application files).
+Set the **disk limit** in Settings below what you can spare; RecoraCam deletes the oldest days when it is passed. Put the recording folder on a disk of its own for best results (it is never mixed with the application files).
 
 ## Security and privacy
 
 > [!WARNING]
-> **CamVault has no login yet.** Anyone who can reach its port can watch, download and delete recordings. Run it on a trusted network only and **do not expose ports 5000 or 1984 to the internet.**
+> **RecoraCam has no login yet.** Anyone who can reach its port can watch, download and delete recordings. Run it on a trusted network only and **do not expose ports 5000 or 1984 to the internet.**
 
-- **Network.** By default the app listens on all interfaces. Use `CAMVAULT_HOST=127.0.0.1` for local-only access. For remote viewing use a **VPN** (WireGuard, Tailscale, …) or a reverse proxy that adds HTTPS and authentication.
-- **Camera passwords** are part of the stream address, so they are stored in plain text in `app_database.db` and may be visible on go2rtc's port 1984. Treat both as secrets. Give CamVault its own **view-only camera user**.
+- **Network.** By default the app listens on all interfaces. Use `RECORACAM_HOST=127.0.0.1` for local-only access. For remote viewing use a **VPN** (WireGuard, Tailscale, …) or a reverse proxy that adds HTTPS and authentication.
+- **Camera passwords** are part of the stream address, so they are stored in plain text in `app_database.db` and may be visible on go2rtc's port 1984. Treat both as secrets. Give RecoraCam its own **view-only camera user**.
 - **Never commit the database or recordings.** `.gitignore` already excludes `app_database.db`, `Logs/`, `RECORD/` and the demo data — keep it that way when you fork.
 - **Law and privacy.** Recording people is regulated in many places (signage, retention periods, no recording of neighbours' property, audio laws). You are responsible for complying with the rules where you live.
 
 ## Project structure
 
 ```
-camvault-nvr/
+recoracam-nvr/
 ├── app.py                  Flask app: API routes, scheduling, recording control, export
 ├── ffmpeg_supervisor.py    Crash supervision, exponential back-off, schedule gap checker
 ├── playback_api.py         Playback endpoints: days, summary, per-day sessions, HLS windows
@@ -267,7 +269,7 @@ camvault-nvr/
 │   ├── get_binaries.py     Downloads go2rtc / MediaMTX for your system
 │   └── fix_aspect.py       Repairs the picture shape of recordings made by early versions
 ├── dev/                    Demo mode only: simulator, setup script, README (nothing here runs in a normal start)
-└── docs/screenshots/       Images used in this README
+└── docs/                   Project website (GitHub Pages) and the screenshots used in this README
 ```
 
 Created at run time and git-ignored: `app_database.db`, `Logs/`, `RECORD/` (default recording folder), `user_data/` (temporary playlists and prepared downloads), `go2rtc/go2rtc(.exe)`, `dev/bin`, `dev/samples`, `dev/demo_data`.
@@ -298,8 +300,8 @@ python scripts/fix_aspect.py --apply --camera Entrance --since 2026-10-01
 | Recording works but Playback is black | The camera sends **H.265/HEVC**, which most browsers cannot play. Switch the camera to H.264 (the substream is often H.264 already). Downloaded MP4s still play in VLC. |
 | No live picture on Home | go2rtc is not installed or not running: `python scripts/get_binaries.py`, restart, and check `Logs/go2rtc.log`. Allow it through the firewall on private networks. |
 | Footage looks horizontally stretched | Recorded by an early version: `python scripts/fix_aspect.py --apply`. |
-| Schedules start at the wrong hour | The schedule time zone is the computer's. Set `CAMVAULT_TZ=Continent/City` if the computer's time zone is wrong or cannot be detected. |
-| *Address already in use* | Another program (or another CamVault, or the demo) uses port 5000: `CAMVAULT_PORT=5001`. |
+| Schedules start at the wrong hour | The schedule time zone is the computer's. Set `RECORACAM_TZ=Continent/City` if the computer's time zone is wrong or cannot be detected. |
+| *Address already in use* | Another program (or another RecoraCam, or the demo) uses port 5000: `RECORACAM_PORT=5001`. |
 | Download fails or is slow | FFmpeg must be on the `PATH`. Segments of MPEG-2 sources are converted (GPU if NVIDIA, otherwise CPU), which takes longer than the copy used for H.264. |
 | Something else | The log of the current run is in `Logs/` (path shown in Settings → System). |
 
@@ -320,15 +322,15 @@ Issues and pull requests are welcome. Please keep changes focused, describe how 
 
 ## License
 
-Copyright (C) 2026 Haris
+Copyright (C) 2026 YOUR NAME
 
-CamVault NVR is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License, version 3** (LGPL-3.0). It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
+RecoraCam NVR is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License, version 3** (LGPL-3.0). It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
 
 The licence text is in [`LICENSE`](LICENSE) (LGPL v3). The LGPL is an addition to the GNU GPL v3, so that text is included as well: [`COPYING`](COPYING). By submitting a pull request you agree that your contribution is released under the same licence.
 
 ## Third-party software
 
-CamVault is built on, and downloads on request, the following open-source projects. They keep their own licences; nothing from them is committed to this repository.
+RecoraCam is built on, and downloads on request, the following open-source projects. They keep their own licences; nothing from them is committed to this repository.
 
 | Project | Use | Licence |
 |---------|-----|---------|
@@ -341,8 +343,8 @@ CamVault is built on, and downloads on request, the following open-source projec
 | [Font Awesome Free](https://fontawesome.com) | icons | CC BY 4.0 (icons), SIL OFL 1.1 (fonts), MIT (code) |
 | [Manrope](https://fonts.google.com/specimen/Manrope), [DM Mono](https://fonts.google.com/specimen/DM+Mono) | fonts, loaded from Google Fonts | SIL OFL 1.1 |
 
-> The page loads its two fonts from Google Fonts, so a browser with internet access contacts Google when it opens CamVault. For a fully offline installation, host the fonts locally or accept the system fallback fonts.
+> The page loads its two fonts from Google Fonts, so a browser with internet access contacts Google when it opens RecoraCam. For a fully offline installation, host the fonts locally or accept the system fallback fonts.
 
 ---
 
-<div align="center"><sub>CamVault NVR — your cameras, your disk, your network.</sub></div>
+<div align="center"><sub>RecoraCam NVR — your cameras, your disk, your network.</sub></div>

@@ -179,7 +179,7 @@ function setPageHtml() {
 
   const live = `
     <div class="set-row">
-      <div class="set-row__txt"><div class="set-lbl">Live view server</div><div class="set-desc">go2rtc, started together with CamVault.</div></div>
+      <div class="set-row__txt"><div class="set-lbl">Live view server</div><div class="set-desc">go2rtc, started together with RecoraCam.</div></div>
       <div class="set-ctl"><span class="set-status" id="liveStatus"><i></i>Checking…</span></div>
     </div>
     ${setRow('wall_refresh_seconds', 'Refresh camera wall every',
@@ -193,7 +193,7 @@ function setPageHtml() {
     <div class="set-layout" id="setPage">
       <nav class="set-nav" id="setNav" aria-label="Settings sections">${nav}</nav>
       <div class="set-main">
-        ${setCard('storage', 'Storage', 'Where recordings go and how CamVault keeps the disk from filling up.', storage)}
+        ${setCard('storage', 'Storage', 'Where recordings go and how RecoraCam keeps the disk from filling up.', storage)}
         ${setCard('recording', 'Recording', 'How footage is written to disk.', recording)}
         ${setCard('playback', 'Playback', 'How the video player behaves.', playback)}
         ${setCard('downloads', 'Downloads', 'Clips you trim on the Download page.', downloads)}
@@ -495,7 +495,7 @@ async function setApplyNow() {
 
   if (!out) return setFlash('Could not reach the server.', 'bad', 6000);
   if (out.failed.length) {
-    return setFlash(`Could not restart ${out.failed.join(', ')}. CamVault keeps trying on its own.`, 'bad', 9000);
+    return setFlash(`Could not restart ${out.failed.join(', ')}. RecoraCam keeps trying on its own.`, 'bad', 9000);
   }
   const n = out.restarted.length;
   setFlash(n
@@ -601,7 +601,7 @@ async function setCheckFolder() {
 
 /* ---------- Folder picker ----------
    A web page cannot read real disk paths from the browser, so the folders are listed by the
-   server (GET /api/settings/browse). It shows the drives of the computer CamVault runs on. */
+   server (GET /api/settings/browse). It shows the drives of the computer RecoraCam runs on. */
 const PICK_ICON_DIR = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.2l2 2.2h8.8A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg>';
 const PICK_ICON_DRIVE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M7 12h.01M11 12h6" stroke-linecap="round"/></svg>';
 const PICK_ICON_GO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
@@ -768,7 +768,7 @@ async function setPickerUse() {
   }
   if (!out.ok) {
     use.disabled = false;
-    return setPickerError(out.message || 'CamVault cannot write to this folder');
+    return setPickerError(out.message || 'RecoraCam cannot write to this folder');
   }
   setState.vals.recording_folder = path;
   setState.folderNote = { ok: true, message: out.message, path: '' };
@@ -858,7 +858,7 @@ async function setLoadSystem() {
   status.innerHTML = `<i></i>${info.live_available ? `Running · port ${setEsc(info.live_port)}` : 'Not running'}`;
 
   const items = [
-    ['CamVault', 'v' + info.version], ['FFmpeg', info.ffmpeg],
+    ['RecoraCam', 'v' + info.version], ['FFmpeg', info.ffmpeg],
     ['Time zone', info.timezone], ['Running for', setFmtUptime(info.uptime_seconds)],
     ['Database', info.database], ['Log file', info.log_file || '—']
   ];

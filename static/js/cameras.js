@@ -447,7 +447,7 @@ async function camCreate() {
 async function camDelete() {
   const cam = camById(camState.selectedId);
   if (!cam) return;
-  if (!confirm(`Delete "${cam.name}"?\n\nIts saved recordings stay on disk, but the camera is removed from CamVault.`)) return;
+  if (!confirm(`Delete "${cam.name}"?\n\nIts saved recordings stay on disk, but the camera is removed from RecoraCam.`)) return;
   await fetch('/api/cameras?id=' + cam.id, { method: 'DELETE' });
   delete camThumbs[cam.id];
   camState.selectedId = null;

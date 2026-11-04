@@ -1,7 +1,7 @@
 """
 scripts/fix_aspect.py - repair the picture shape of recordings made by the old recorder.
 
-Why: an earlier CamVault forced "sample_aspect_ratio=16/9" into every H.264 recording. That value is the
+Why: an earlier version of this recorder forced "sample_aspect_ratio=16/9" into every H.264 recording. That value is the
 shape of one pixel, so a normal 16:9 camera was stored as a 3.2:1 picture and looked stretched in browsers
 and in VLC. New recordings are fine. This script puts the old ones right.
 
@@ -43,7 +43,7 @@ BAD_SAR = "16:9"                       # what the old recorder wrote
 
 def default_folder():
     try:
-        db = Path(os.environ.get("CAMVAULT_DB") or "app_database.db")
+        db = Path(os.environ.get("RECORACAM_DB") or "app_database.db")
         con = sqlite3.connect(str(db if db.is_absolute() else ROOT / db))
         row = con.execute("SELECT value FROM settings WHERE key='recording_folder'").fetchone()
         con.close()
@@ -160,7 +160,7 @@ def main():
         sys.exit("No camera folders with recorded days found.")
 
     now = time.time()
-    with tempfile.TemporaryDirectory(prefix="camvault_fix_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="recoracam_fix_") as tmp:
         if not a.apply:
             # look only: three segments per day are checked, which is quick and enough to tell
             bad_days = 0

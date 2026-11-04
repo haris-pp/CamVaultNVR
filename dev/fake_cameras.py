@@ -1,5 +1,5 @@
 """
-dev/fake_cameras.py - simulated RTSP cameras for the CamVault DEMO (and for testing without hardware).
+dev/fake_cameras.py - simulated RTSP cameras for the RecoraCam DEMO (and for testing without hardware).
 
 Every video file in dev/samples/ becomes a looping RTSP "camera":
 

@@ -1,5 +1,5 @@
 """
-Playback API for CamVault (the Playback page).
+Playback API for RecoraCam (the Playback page).
 
     GET /api/playback/days?source=<folder>
             every day that has footage for one camera  -> the green days in the calendar

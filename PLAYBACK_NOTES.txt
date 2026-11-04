@@ -1,0 +1,36 @@
+CamVault Playback page: what is in this zip
+
+NEW      playback_api.py            4 read-only routes: recorded days, per-day summary, sessions of a day, playlist window
+NEW      static/js/playback.js      the page (camera list, calendar, player, 24-hour slider)
+NEW      static/css/playback.css
+CHANGED  templates/index.html       "Playback" menu item + the new css / js
+CHANGED  static/js/home.js          page frame for Playback; a video stops when you leave the page
+CHANGED  static/js/cameras.js       "Watch recordings" button next to "Download footage"
+CHANGED  app.py                     3 small edits, listed below
+
+If you merge app.py by hand, these are the only edits:
+ 1. next to "import settings_api" add:
+        import playback_api
+ 2. right after  settings_api.init(...)  add:
+        playback_api.init(
+            app, get_setting, query_db,
+            user_folder=lambda sid: get_user_session_folder(sid),
+            needs_transcoding=lambda path: needs_transcoding(path),
+        )
+ 3. in api_recordings(), the time-range filter now compares seconds of the day. Before, a range that
+    ended at midnight (to=86400) matched nothing. (Download page benefit; Playback does not use this route.)
+
+How it works
+ - Green days come from the day folders that contain .ts files.
+ - The slider's green bars are the recorded sessions of that camera and day.
+ - Click or drag on the bar: it loads a playlist that starts 2 minutes before that time (so a small step
+   back needs no reload) and runs for "Longest range" from Settings. Clicking again inside that range only seeks.
+ - A click in a gap jumps to the next footage. Playback carries on over gaps, into the next session,
+   and into the next day with footage.
+ - Segment lengths come from the file names and last-modified times, so no ffprobe: a 24-hour day lists in
+   ~50 ms. Where ffmpeg restarted, the playlist gets #EXT-X-DISCONTINUITY so the player does not stumble.
+   This assumes recorder and app run on the same machine (same clock and time zone), as they do now.
+ - Settings used: skip seconds, default speed, longest range, 12 / 24-hour clock.
+
+No database change, no new packages, nothing is written except the temporary playlist in user_data/.
+Keys: Space / K play-pause, Left / Right skip, F full screen, M mute.

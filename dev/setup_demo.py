@@ -1,5 +1,5 @@
 """
-dev/setup_demo.py - get everything the CamVault demo needs, or remove it again.
+dev/setup_demo.py - get everything the RecoraCam demo needs, or remove it again.
 
     python dev/setup_demo.py              prepare the demo (safe to run again, it only does what is missing)
     python dev/setup_demo.py --no-live    ... without go2rtc (the demo then has no live picture on the Home page)
@@ -65,7 +65,7 @@ def make_clip(name, source, out, label=True):
         title = name.upper()
         vf = (f",drawtext=fontfile='{ff_path(font)}':text='{title}':fontcolor=white:fontsize=56:x=40:y=36:"
               f"box=1:boxcolor=black@0.55:boxborderw=14,"
-              f"drawtext=fontfile='{ff_path(font)}':text='CamVault demo - simulated camera':fontcolor=white:fontsize=26:"
+              f"drawtext=fontfile='{ff_path(font)}':text='RecoraCam demo - simulated camera':fontcolor=white:fontsize=26:"
               f"x=40:y=116:box=1:boxcolor=black@0.55:boxborderw=8")
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"{source}{vf}",
            "-t", str(SECONDS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "30", "-pix_fmt", "yuv420p",
@@ -109,7 +109,7 @@ def remove(folder):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Prepare or remove the CamVault demo.")
+    ap = argparse.ArgumentParser(description="Prepare or remove the RecoraCam demo.")
     ap.add_argument("--no-live", action="store_true", help="do not download go2rtc")
     ap.add_argument("--regenerate", action="store_true", help="make the sample videos again")
     ap.add_argument("--reset", action="store_true", help="delete the demo database and recordings (dev/demo_data)")

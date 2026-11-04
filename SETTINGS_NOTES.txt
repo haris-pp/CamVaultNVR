@@ -1,0 +1,20 @@
+CamVault Settings page: what is in this zip
+
+NEW      settings_api.py          all /api/settings routes (settings, folder check, storage, system)
+CHANGED  app.py                   3 small edits, listed below
+CHANGED  daily_jobs.py            clean-up times, limit and on/off now come from Settings; prepared downloads use the keep time
+CHANGED  static/js/settings.js    the new page
+CHANGED  static/css/settings.css
+CHANGED  static/js/home.js        camera-wall refresh interval and "Recycle at N%" follow Settings
+CHANGED  static/js/recordings.js  default speed, longest range and time format follow Settings
+
+If you merge app.py by hand, these are the only edits:
+ 1. next to "from daily_jobs import setup_daily_jobs" add:
+        import daily_jobs
+        import settings_api
+ 2. delete the old  @app.route("/api/settings", methods=["GET","POST"])  function (api_settings)
+ 3. right after set_setting(...) add:
+        settings_api.init(app, get_setting, set_setting, scheduler, daily_jobs, DB)
+
+No database change and no new packages. New settings are stored in the existing settings table
+and fall back to their defaults until you save them.

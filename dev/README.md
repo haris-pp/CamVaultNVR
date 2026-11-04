@@ -1,6 +1,6 @@
 # Demo mode (optional)
 
-This folder holds a **camera simulator** so CamVault can be tried, filmed or developed without any camera.
+This folder holds a **camera simulator** so RecoraCam can be tried, filmed or developed without any camera.
 It is **off by default**: a normal start never touches it, and none of its files are used for real cameras.
 
 ```
@@ -27,14 +27,14 @@ every file becomes one more camera at the next demo start.
 
 | I want to... | Do this |
 |---|---|
-| start the demo | `python app.py --demo` &nbsp;or&nbsp; set `CAMVAULT_DEMO=1` &nbsp;or&nbsp; `run_demo_windows.bat` |
+| start the demo | `python app.py --demo` &nbsp;or&nbsp; set `RECORACAM_DEMO=1` &nbsp;or&nbsp; `run_demo_windows.bat` |
 | go back to my real cameras | stop the app (Ctrl+C) and start it **without** `--demo` (`python app.py`, `run_windows.bat`) |
 | start the demo from scratch | `python dev/setup_demo.py --reset` (deletes `dev/demo_data/`: demo database + recordings) |
 | remove the demo completely | `python dev/setup_demo.py --clean` (also deletes the downloaded MediaMTX and the sample videos) |
 | remove the demo from the code | delete the `dev/` folder and `run_demo_windows.bat`; nothing else needs it (the `--demo` code path in `app.py` is only taken when you ask for it) |
 
-Run only one CamVault at a time (the real one **or** the demo): both use port 5000. To run both, give one of them
-another port with `CAMVAULT_PORT=5001`.
+Run only one RecoraCam at a time (the real one **or** the demo): both use port 5000. To run both, give one of them
+another port with `RECORACAM_PORT=5001`.
 
 ## Files
 

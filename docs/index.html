@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RecoraCam NVR: a schedule-first video recorder for IP cameras</title>
+<meta name="description" content="RecoraCam NVR records your IP cameras to your own disk on a schedule, with live view, a 24-hour playback timeline and one-click MP4 export. Free and open source, no cloud, no account.">
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0e15" media="(prefers-color-scheme: dark)">
+
+<!-- Social previews need an absolute address. Replace YOUR-USERNAME (the same placeholder as in README.md) once. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="RecoraCam NVR: a schedule-first video recorder for IP cameras">
+<meta property="og:description" content="Schedule recordings, watch live, scrub a 24-hour timeline and export clips from any browser. Free and open source.">
+<meta property="og:image" content="https://YOUR-USERNAME.github.io/recoracam-nvr/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect width='30' height='30' rx='8' fill='%230f172a'/%3E%3Ccircle cx='15' cy='15' r='5.5' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preload" href="assets/fonts/manrope-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<script>document.documentElement.classList.add('js')</script>
+
+<style>
+/* Fonts are served from this site (assets/fonts): the page makes no request to any other server. */
+@font-face{font-family:"Manrope";src:url("assets/fonts/manrope-latin-wght.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
+@font-face{font-family:"DM Mono";src:url("assets/fonts/dm-mono-latin-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"DM Mono";src:url("assets/fonts/dm-mono-latin-500.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+
+/* Same palette as the application itself (static/css/style.css) */
+:root{
+  --bg:#f3f5f8; --surface:#fff; --surface-2:#f7f9fb; --line:#e3e8ee;
+  --ink:#0f172a; --muted:#566176; --link:#2b4fd8;
+  --btn-bg:#0f172a; --btn-ink:#fff; --btn-hover:#1e293b;
+  --rec:#d93036; --ok:#138a5b; --mint:#a9dfc4;
+  --monitor:#0b1018; --monitor-2:#141c29; --monitor-line:#222d3f; --monitor-ink:#e8eef9; --monitor-muted:#93a1ba;
+  --code:#0f172a; --code-ink:#e6edf7; --code-muted:#8795ad; --code-line:#26324a;
+  --shadow:0 1px 2px rgba(15,23,42,.05),0 10px 30px rgba(15,23,42,.07);
+  --font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --gutter:clamp(16px,4vw,32px); --max:1160px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0e15; --surface:#111826; --surface-2:#0e1420; --line:#212c40;
+    --ink:#e9eef8; --muted:#9ba8c0; --link:#8fa7ff;
+    --btn-bg:#e9eef8; --btn-ink:#0f172a; --btn-hover:#fff;
+    --rec:#ff5a60; --ok:#4fc79a; --mint:#3b9d77;
+    --monitor:#06090e; --monitor-2:#0f1621; --monitor-line:#1d2839;
+    --code:#070b12; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1.0625rem/1.65 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img,video{display:block;max-width:100%;height:auto}
+a{color:var(--link);text-underline-offset:.18em}
+:focus-visible{outline:3px solid var(--link);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:var(--gutter);top:-60px;background:var(--btn-bg);color:var(--btn-ink);padding:10px 16px;border-radius:8px;z-index:20}
+.skip:focus{top:12px}
+.wrap{width:100%;max-width:calc(var(--max) + 2*var(--gutter));margin-inline:auto;padding-inline:var(--gutter)}
+h1,h2,h3{margin:0;font-weight:800;color:var(--ink);text-wrap:balance}
+p{margin:0}
+code,.mono{font-family:var(--mono)}
+code,pre,.mono,.osd__time,.ticks,.track__bubble,.mini td{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.muted{color:var(--muted)}
+
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;gap:24px;padding-block:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.2rem;letter-spacing:-.02em;color:var(--ink);text-decoration:none;margin-right:auto}
+.brand svg{flex:none}
+.top__links{display:flex;gap:26px}
+.top__links a{color:var(--muted);text-decoration:none;font-weight:600;font-size:.95rem}
+.top__links a:hover{color:var(--ink)}
+@media (max-width:760px){.top__links{display:none}}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 22px;border-radius:999px;font:700 .98rem/1 var(--font);text-decoration:none;border:1.5px solid transparent;cursor:pointer;transition:background-color .15s,border-color .15s}
+.btn--solid{background:var(--btn-bg);color:var(--btn-ink)}
+.btn--solid:hover{background:var(--btn-hover)}
+.btn--line{border-color:var(--line);color:var(--ink);background:var(--surface)}
+.btn--line:hover{border-color:var(--ink)}
+.btn--small{min-height:40px;padding:0 18px;font-size:.92rem}
+
+/* ---------- hero ---------- */
+.hero{padding-top:clamp(36px,7vw,84px)}
+.hero h1{font-size:clamp(2.5rem,5.6vw,4.5rem);line-height:1.04;letter-spacing:-.04em;max-width:22ch}
+.hero__lead{margin-top:22px;max-width:60ch;font-size:clamp(1.1rem,1.6vw,1.3rem);line-height:1.55;color:var(--muted)}
+.hero__cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.hero__note{margin-top:18px;font-size:.95rem;color:var(--muted)}
+
+/* ---------- camera wall (the one loud element) ---------- */
+.wall{margin:clamp(40px,6vw,72px) 0 0;background:var(--monitor);border:1px solid var(--monitor-line);border-radius:22px;padding:clamp(8px,1.4vw,16px);box-shadow:var(--shadow)}
+.wall__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(6px,1vw,10px)}
+.tile{position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:12px;background:#000}
+.tile--main{grid-column:1/3;grid-row:1/3}
+.tile video{width:100%;height:100%;object-fit:cover}
+.osd{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:flex-start;padding:clamp(6px,1vw,12px);pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 1px rgba(0,0,0,.9);background:linear-gradient(to bottom,rgba(0,0,0,.45),rgba(0,0,0,0) 38%)}
+.osd__name{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:clamp(.66rem,1.05vw,.86rem);line-height:1.2}
+.osd__time{font:500 clamp(.6rem,.95vw,.8rem)/1.2 var(--mono);opacity:.92}
+.tile:not(.tile--main) .osd__time{display:none}
+.rec{width:.62em;height:.62em;border-radius:50%;background:var(--rec);box-shadow:0 0 0 2px rgba(0,0,0,.25);animation:rec 2.4s ease-in-out infinite}
+@keyframes rec{0%,55%{opacity:1}75%,100%{opacity:.25}}
+
+.dock{margin-top:clamp(8px,1.2vw,12px);background:var(--monitor-2);border:1px solid var(--monitor-line);border-radius:14px;padding:12px clamp(12px,1.6vw,18px) 10px;color:var(--monitor-ink)}
+.dock__head{display:flex;justify-content:space-between;gap:12px;font-size:.84rem;font-weight:600;margin-bottom:9px}
+.dock__head span:last-child{color:var(--monitor-muted);font-weight:500}
+.track{position:relative;height:34px;border-radius:8px;background:#1b2536;cursor:crosshair;touch-action:pan-y}
+.track__block{position:absolute;top:0;bottom:0;background:var(--mint);opacity:.92;border-radius:5px}
+.track__head{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--rec);border-radius:2px;pointer-events:none}
+.track__head::before{content:"";position:absolute;left:50%;top:-1px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--rec)}
+.track__head--hover{background:#fff;display:none}
+.track__head--hover::before{background:#fff}
+.track__bubble{position:absolute;bottom:calc(100% + 8px);transform:translateX(-50%);padding:3px 8px;border-radius:6px;background:#fff;color:#0f172a;font:500 .74rem/1.3 var(--mono);white-space:nowrap}
+.ticks{display:flex;justify-content:space-between;margin-top:8px;font:400 .72rem/1 var(--mono);color:var(--monitor-muted)}
+.wall figcaption{margin:12px 6px 4px;font-size:.84rem;color:var(--monitor-muted)}
+@media (max-width:640px){
+  .wall__grid{grid-template-columns:repeat(2,1fr)}
+  .tile--main{grid-column:1/-1;grid-row:auto}
+  .osd__name{font-size:.78rem}
+}
+@media (max-width:420px){
+  .tile--main .osd__time{display:none}
+  .dock__head{font-size:.78rem}
+}
+
+/* ---------- sections ---------- */
+.sec{padding-block:clamp(64px,9vw,120px)}
+.sec--tint{background:var(--surface-2);border-block:1px solid var(--line)}
+.sec__head{max-width:62ch;margin-bottom:clamp(36px,5vw,64px)}
+.sec__head h2{font-size:clamp(1.9rem,3.6vw,2.9rem);line-height:1.08;letter-spacing:-.03em}
+.sec__head p{margin-top:16px;color:var(--muted);font-size:1.12rem}
+
+/* ---------- plain facts ---------- */
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,4vw,56px);margin:clamp(56px,8vw,96px) 0 0;padding:0;list-style:none}
+.facts li{max-width:34ch}
+.facts strong{display:block;font-size:1.15rem;font-weight:800;letter-spacing:-.015em;margin-bottom:6px}
+.facts span{color:var(--muted)}
+@media (max-width:760px){.facts{grid-template-columns:1fr;gap:22px}}
+
+/* ---------- feature blocks ---------- */
+.feature{display:grid;grid-template-columns:repeat(12,1fr);column-gap:clamp(24px,4vw,64px);align-items:center}
+.feature + .feature{margin-top:clamp(64px,9vw,120px)}
+.feature__text{grid-column:1/6;grid-row:1}
+.feature__shot{grid-column:6/13;grid-row:1}
+.feature--flip .feature__text{grid-column:8/13}
+.feature--flip .feature__shot{grid-column:1/8}
+.feature h3{font-size:clamp(1.5rem,2.4vw,2rem);line-height:1.15;letter-spacing:-.025em}
+.feature__text p{margin-top:14px;color:var(--muted)}
+.feature__text ul{margin:20px 0 0;padding:0;list-style:none;display:grid;gap:12px}
+.feature__text li{position:relative;padding-left:22px}
+.feature__text li::before{content:"";position:absolute;left:0;top:.72em;width:10px;height:2px;border-radius:2px;background:var(--ok)}
+.shot{display:block;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.shot img{width:100%;height:auto}
+@media (max-width:900px){
+  .feature{display:block}
+  .feature__shot{margin-top:28px}
+}
+
+/* ---------- code ---------- */
+.code{position:relative;background:var(--code);color:var(--code-ink);border-radius:14px;border:1px solid var(--code-line)}
+.code pre{margin:0;padding:20px 20px 20px;overflow-x:auto;font:400 .9rem/1.8 var(--mono);tab-size:4}
+.code .c{color:var(--code-muted)}
+.code__copy{position:absolute;top:9px;right:9px;min-height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--code-line);background:#16213a;color:var(--code-ink);font:600 .8rem/1 var(--font);cursor:pointer}
+.code__copy:hover{background:#1f2c4b}
+.code--copy pre{padding:52px 20px 20px}
+.tabs{display:inline-flex;gap:4px;padding:4px;margin-bottom:14px;background:var(--surface);border:1px solid var(--line);border-radius:999px}
+.tabs button{min-height:38px;padding:0 18px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:700 .92rem/1 var(--font);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--btn-bg);color:var(--btn-ink)}
+.panel + .panel{margin-top:18px}
+
+.qs{display:grid;grid-template-columns:repeat(12,1fr);column-gap:clamp(24px,4vw,64px);row-gap:44px}
+.qs__main{grid-column:1/8}
+.qs__side{grid-column:9/13}
+@media (max-width:900px){.qs__main,.qs__side{grid-column:1/-1}}
+.need{margin:0 0 22px;color:var(--muted)}
+.need b{color:var(--ink)}
+.after{margin-top:18px;color:var(--muted)}
+.after code,.faq code,.steps code,.list code,.addr code{font-size:.9em;padding:.12em .4em;border-radius:6px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:22px}
+.steps li{position:relative;padding-left:44px;counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--btn-bg);color:var(--btn-ink);font:700 .85rem/30px var(--font);text-align:center}
+.steps strong{display:block;font-weight:800}
+.steps span{color:var(--muted)}
+.side-title{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;margin-bottom:18px}
+
+.warn{margin-top:28px;padding:16px 18px 16px 20px;border-left:4px solid var(--rec);background:var(--surface);border-radius:0 12px 12px 0;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.warn strong{display:block;margin-bottom:2px}
+.warn span{color:var(--muted)}
+
+.addr{margin-top:34px}
+.addr summary{cursor:pointer;font-weight:700}
+.tablewrap{overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.addr table{border-collapse:collapse;width:100%;min-width:560px;font-size:.88rem}
+.addr th,.addr td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.addr tr:last-child td{border-bottom:0}
+.addr th{font-weight:700;white-space:nowrap}
+.addr td{font-family:var(--mono);font-size:.82rem;word-break:break-all}
+.addr .note{margin-top:12px;font-size:.92rem;color:var(--muted)}
+
+/* ---------- demo ---------- */
+.demo{display:grid;grid-template-columns:repeat(12,1fr);column-gap:clamp(24px,4vw,64px);row-gap:28px;align-items:center}
+.demo__text{grid-column:1/6}
+.demo__code{grid-column:6/13}
+.demo__text h2{font-size:clamp(1.9rem,3.4vw,2.7rem);line-height:1.08;letter-spacing:-.03em}
+.demo__text p{margin-top:16px;color:var(--muted)}
+.list{margin:18px 0 0;padding:0;list-style:none;display:grid;gap:10px;color:var(--muted)}
+.list li{position:relative;padding-left:22px}
+.list li::before{content:"";position:absolute;left:0;top:.72em;width:10px;height:2px;border-radius:2px;background:var(--ok)}
+@media (max-width:900px){.demo__text,.demo__code{grid-column:1/-1}}
+
+/* ---------- how it works ---------- */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin:0;padding:0;list-style:none}
+.flow li{position:relative;padding:20px 20px 22px;background:var(--surface);border:1px solid var(--line);border-left-width:0}
+.flow li:first-child{border-left-width:1px;border-radius:14px 0 0 14px}
+.flow li:last-child{border-radius:0 14px 14px 0}
+.flow li + li::before{content:"";position:absolute;left:-9px;top:50%;width:16px;height:16px;margin-top:-8px;background:var(--surface);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:rotate(45deg);z-index:1}
+.flow b{display:block;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+.flow span{display:block;font-size:.9rem;line-height:1.5;color:var(--muted)}
+.flow__under{max-width:78ch;margin-top:26px;color:var(--muted)}
+.flow__under + .flow__under{margin-top:12px}
+@media (max-width:900px){
+  .flow{grid-template-columns:1fr}
+  .flow li{border-left-width:1px;border-top-width:0}
+  .flow li:first-child{border-top-width:1px;border-radius:14px 14px 0 0}
+  .flow li:last-child{border-radius:0 0 14px 14px}
+  .flow li + li::before{left:28px;top:-9px;margin-top:0;transform:rotate(135deg)}
+}
+
+/* ---------- next / limits ---------- */
+.next{display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,6vw,88px)}
+.next h3{font-size:1.4rem;letter-spacing:-.02em;margin-bottom:6px}
+.next > div > p{color:var(--muted);margin-bottom:6px}
+.next .list{margin-top:14px}
+@media (max-width:760px){.next{grid-template-columns:1fr}}
+
+/* ---------- faq ---------- */
+.faq{max-width:820px}
+.faq details{border-top:1px solid var(--line)}
+.faq details:last-child{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;align-items:center;padding:20px 0;font-weight:700;font-size:1.1rem;letter-spacing:-.01em}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";flex:none;width:11px;height:11px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(225deg) translate(-2px,-2px)}
+.faq__a{padding:0 0 22px;max-width:68ch;color:var(--muted)}
+.faq__a p + p{margin-top:12px}
+.mini{width:100%;max-width:520px;margin-top:14px;border-collapse:collapse;font-size:.92rem;color:var(--ink)}
+.mini th,.mini td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+.mini th{font-weight:700;color:var(--muted)}
+.mini td:not(:first-child),.mini th:not(:first-child){text-align:right;font-family:var(--mono);font-size:.86rem}
+
+/* ---------- footer ---------- */
+.foot{border-top:1px solid var(--line);padding-block:44px 56px;color:var(--muted);font-size:.95rem}
+.foot__row{display:flex;flex-wrap:wrap;gap:14px 36px;justify-content:space-between;align-items:flex-start}
+.foot__links{display:flex;flex-wrap:wrap;gap:10px 26px}
+.foot__links a{color:var(--ink);font-weight:600;text-decoration:none}
+.foot__links a:hover{text-decoration:underline}
+.foot p{max-width:56ch}
+.foot p + p{margin-top:8px;font-size:.88rem}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rec{animation:none}
+  .faq summary::after{transition:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#features">Skip to content</a>
+
+<header class="wrap top">
+  <a class="brand" href="#top" aria-label="RecoraCam NVR, back to the top">
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="currentColor"/><circle cx="15" cy="15" r="5.5" fill="var(--bg)"/></svg>
+    RecoraCam
+  </a>
+  <nav class="top__links" aria-label="Page sections">
+    <a href="#features">Features</a>
+    <a href="#quick-start">Quick start</a>
+    <a href="#demo">Demo</a>
+    <a href="#how">How it works</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <a class="btn btn--line btn--small" data-repo="" href="https://github.com/YOUR-USERNAME/recoracam-nvr">GitHub</a>
+</header>
+
+<main id="top">
+
+<!-- ======================= hero ======================= -->
+<section class="hero wrap" aria-labelledby="h-hero">
+  <h1 id="h-hero">Your cameras, recorded on your own disk.</h1>
+  <p class="hero__lead">RecoraCam is a self-hosted video recorder for IP cameras. Set a weekly schedule, watch live, scrub through a 24-hour timeline and export clips from any browser. No cloud, no account, no subscription.</p>
+  <div class="hero__cta">
+    <a class="btn btn--solid" href="#quick-start">Get started</a>
+    <a class="btn btn--line" data-repo="" href="https://github.com/YOUR-USERNAME/recoracam-nvr">View on GitHub</a>
+  </div>
+  <p class="hero__note">Free and open source under the LGPL v3. Runs on Windows and Linux with Python and FFmpeg.</p>
+
+  <figure class="wall" aria-label="A camera wall with five simulated cameras and a recording timeline">
+    <div class="wall__grid">
+      <div class="tile tile--main">
+        <video autoplay muted loop playsinline preload="metadata" poster="assets/clips/MainParking.jpg" aria-hidden="true" tabindex="-1"><source src="assets/clips/MainParking.mp4" type="video/mp4"><source src="assets/clips/MainParking.webm" type="video/webm"></video>
+        <div class="osd"><span class="osd__name"><i class="rec"></i>Main Parking</span><time class="osd__time" data-clock></time></div>
+      </div>
+      <div class="tile">
+        <video autoplay muted loop playsinline preload="metadata" poster="assets/clips/Entrance.jpg" aria-hidden="true" tabindex="-1"><source src="assets/clips/Entrance.mp4" type="video/mp4"><source src="assets/clips/Entrance.webm" type="video/webm"></video>
+        <div class="osd"><span class="osd__name"><i class="rec"></i>Entrance</span></div>
+      </div>
+      <div class="tile">
+        <video autoplay muted loop playsinline preload="metadata" poster="assets/clips/Restaurant.jpg" aria-hidden="true" tabindex="-1"><source src="assets/clips/Restaurant.mp4" type="video/mp4"><source src="assets/clips/Restaurant.webm" type="video/webm"></video>
+        <div class="osd"><span class="osd__name"><i class="rec"></i>Restaurant</span></div>
+      </div>
+      <div class="tile">
+        <video autoplay muted loop playsinline preload="metadata" poster="assets/clips/ParkingNorth.jpg" aria-hidden="true" tabindex="-1"><source src="assets/clips/ParkingNorth.mp4" type="video/mp4"><source src="assets/clips/ParkingNorth.webm" type="video/webm"></video>
+        <div class="osd"><span class="osd__name"><i class="rec"></i>Parking North</span></div>
+      </div>
+      <div class="tile">
+        <video autoplay muted loop playsinline preload="metadata" poster="assets/clips/ParkingSouth.jpg" aria-hidden="true" tabindex="-1"><source src="assets/clips/ParkingSouth.mp4" type="video/mp4"><source src="assets/clips/ParkingSouth.webm" type="video/webm"></video>
+        <div class="osd"><span class="osd__name"><i class="rec"></i>Parking South</span></div>
+      </div>
+    </div>
+    <div class="dock">
+      <div class="dock__head"><span>Main Parking</span><span>Today, recorded footage</span></div>
+      <div class="track" data-track aria-hidden="true">
+        <i class="track__block" style="left:0;width:24%"></i>
+        <i class="track__block" style="left:26%;width:30%"></i>
+        <i class="track__block" style="left:59%;width:30%"></i>
+        <i class="track__head" data-now style="left:89%"></i>
+        <i class="track__head track__head--hover" data-hover><b class="track__bubble" data-bubble></b></i>
+      </div>
+      <div class="ticks" aria-hidden="true"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+    </div>
+    <figcaption>Demo mode with simulated cameras. The pictures are computer-generated, and the timeline is only an illustration.</figcaption>
+  </figure>
+
+  <ul class="facts">
+    <li><strong>Your footage stays on your disk.</strong><span>Recordings, settings and the database stay on your computer. There is no account to create.</span></li>
+    <li><strong>Plain files on a plain disk.</strong><span>Footage is saved as camera, day and short segments that any video player can open.</span></li>
+    <li><strong>Free software.</strong><span>Released under the LGPL v3. Read it, change it, run it as long as you like.</span></li>
+  </ul>
+</section>
+
+<!-- ======================= features ======================= -->
+<section class="sec" id="features" aria-labelledby="h-features">
+  <div class="wrap">
+    <div class="sec__head">
+      <h2 id="h-features">Everything between the camera and the clip</h2>
+      <p>Add a camera, tell it when to record, and find any moment later. The whole thing runs in your browser.</p>
+    </div>
+
+    <article class="feature">
+      <div class="feature__text">
+        <h3>Add a camera and test it before you save</h3>
+        <p>Enter a name and the stream address. <strong>Test connection</strong> opens the stream for a few seconds and reports the codec, size and frame rate, or tells you what is wrong: a bad password, a missing stream path, an unreachable camera.</p>
+        <ul>
+          <li>Any address FFmpeg can read: RTSP, RTMP, HTTP, UDP, SRT and more</li>
+          <li>An optional lower-resolution substream for the live tiles</li>
+          <li>Typical addresses for Hikvision, Dahua, Reolink and Tapo are listed in the quick start</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/cameras.png"><img src="screenshots/cameras.png" width="1440" height="900" loading="lazy" alt="The Cameras page: a list of five cameras, a picture from the selected camera, its status and its stream address."></a>
+    </article>
+
+    <article class="feature feature--flip">
+      <div class="feature__text">
+        <h3>Record when you want, with a weekly plan</h3>
+        <p>Drag across a grid of the week in 15-minute steps, or start from a quick fill: all day, business hours, nights or weekends. Plan several cameras at once, or copy another camera's plan.</p>
+        <ul>
+          <li>Recording is a straight copy of the stream, so quality is exactly what the camera sends and CPU use stays close to zero</li>
+          <li>Footage is cut into short segments, 10 seconds by default</li>
+          <li>Recording starts at once if the current time is inside the plan</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/schedules.png"><img src="screenshots/schedules.png" width="1440" height="900" loading="lazy" alt="The Schedules page: a weekly grid with recording planned from 9:00 to 18:00 on weekdays and from 10:00 to 14:00 on Saturday."></a>
+    </article>
+
+    <article class="feature">
+      <div class="feature__text">
+        <h3>See at a glance that everything is recording</h3>
+        <p>The camera wall shows each camera's status and a recent picture, with CPU, memory, disk and network beside it. Click a tile to watch live.</p>
+        <ul>
+          <li>A supervisor restarts a failed recorder with growing delays, so a dead camera does not cause a restart storm</li>
+          <li>A check every 60 seconds restarts any camera that should be recording but is not, after an app restart, a network drop or a crashed FFmpeg</li>
+          <li>Live video is optional and uses go2rtc, with very low delay</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/home.png"><img src="screenshots/home.png" width="1440" height="1100" loading="lazy" alt="The Home page: five camera tiles marked as recording, with storage and system statistics below."></a>
+    </article>
+
+    <article class="feature feature--flip">
+      <div class="feature__text">
+        <h3>Scrub through a whole day</h3>
+        <p>Pick a camera and a day on the calendar, then move along a 24-hour timeline. Zoom to 6 hours or 1 hour, jump between recorded sessions, and play straight across gaps and into the next day.</p>
+        <ul>
+          <li>Keyboard shortcuts, playback speed and a 12 or 24-hour clock</li>
+          <li>Browsers play H.264 everywhere, but H.265 only in some. For H.265 cameras, switch the camera to H.264</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/playback.png"><img src="screenshots/playback.png" width="1440" height="900" loading="lazy" alt="The Playback page: a camera list, a calendar, a video player and a 24-hour timeline with three recorded sessions."></a>
+    </article>
+
+    <article class="feature">
+      <div class="feature__text">
+        <h3>Export exactly the clip you need</h3>
+        <p>Mark an in point and an out point on the timeline, queue several clips and download them as MP4 files.</p>
+        <ul>
+          <li>H.264 cameras are cut without re-encoding, so exports take seconds and lose no quality</li>
+          <li>Other codecs, such as MPEG-2, are converted on an NVIDIA GPU if there is one, otherwise on the CPU</li>
+          <li>Prepared files are removed after a time you choose</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/download.png"><img src="screenshots/download.png" width="1440" height="900" loading="lazy" alt="The Download page: a video player, a trim timeline with in and out points, and a list of recorded sessions."></a>
+    </article>
+
+    <article class="feature feature--flip">
+      <div class="feature__text">
+        <h3>Keeps the disk from filling up</h3>
+        <p>When the recording disk passes a limit (85 percent by default), RecoraCam deletes the oldest days first, across all cameras, at the times you choose.</p>
+        <ul>
+          <li>Choose the recording folder with a folder picker</li>
+          <li>Set the segment length, playback defaults and live-view refresh</li>
+          <li>Day-to-day settings live in the browser, with no config files to edit</li>
+        </ul>
+      </div>
+      <a class="feature__shot shot" href="screenshots/settings.png"><img src="screenshots/settings.png" width="1440" height="900" loading="lazy" alt="The Settings page: the recording disk, the recording folder, the automatic clean-up switch and the disk limit."></a>
+    </article>
+  </div>
+</section>
+
+<!-- ======================= quick start ======================= -->
+<section class="sec sec--tint" id="quick-start" aria-labelledby="h-qs">
+  <div class="wrap">
+    <div class="sec__head">
+      <h2 id="h-qs">Up and running in a few minutes</h2>
+      <p>RecoraCam needs no database server and no build step. Install two things, clone the project and start it.</p>
+    </div>
+
+    <div class="qs">
+      <div class="qs__main">
+        <p class="need">You need <b>Python 3.10 or newer</b>, <b>FFmpeg</b> and one or more IP cameras that stream RTSP, which nearly all do.</p>
+
+        <div class="tabs" role="tablist" aria-label="Operating system" data-tabs>
+          <button type="button" role="tab" id="tab-win" aria-selected="true" aria-controls="panel-win">Windows</button>
+          <button type="button" role="tab" id="tab-nix" aria-selected="false" aria-controls="panel-nix" tabindex="-1">Linux and macOS</button>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-win" aria-labelledby="tab-win">
+          <div class="code code--copy" data-code>
+            <button class="code__copy" type="button">Copy</button>
+<pre><code>winget install Gyan.FFmpeg
+git clone https://github.com/<span data-owner>YOUR-USERNAME</span>/recoracam-nvr.git
+cd recoracam-nvr
+
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+python scripts/get_binaries.py   <span class="c"># optional: live view (go2rtc)</span>
+python app.py                    <span class="c"># or double-click run_windows.bat</span></code></pre>
+          </div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-nix" aria-labelledby="tab-nix">
+          <div class="code code--copy" data-code>
+            <button class="code__copy" type="button">Copy</button>
+<pre><code>sudo apt install ffmpeg          <span class="c"># macOS: brew install ffmpeg</span>
+git clone https://github.com/<span data-owner>YOUR-USERNAME</span>/recoracam-nvr.git
+cd recoracam-nvr
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+python scripts/get_binaries.py   <span class="c"># optional: live view (go2rtc)</span>
+python app.py</code></pre>
+          </div>
+        </div>
+
+        <p class="after">Open <code>http://localhost:5000</code>. The database and the log folder are created on the first start. Stop with <code>Ctrl+C</code>.</p>
+
+        <div class="warn">
+          <strong>RecoraCam has no login yet.</strong>
+          <span>Anyone who can reach its port can watch, download and delete recordings. Run it on a trusted network, and do not expose ports 5000 or 1984 to the internet. For remote viewing, use a VPN.</span>
+        </div>
+      </div>
+
+      <aside class="qs__side" aria-labelledby="h-first">
+        <h3 class="side-title" id="h-first">Add your first camera</h3>
+        <ol class="steps">
+          <li><strong>Add it</strong><span>Open <b>Cameras</b>, press <b>+ Add</b>, then enter a name and the stream address.</span></li>
+          <li><strong>Test it</strong><span>Press <b>Test connection</b>. You get the codec, size and frame rate, or the reason it failed.</span></li>
+          <li><strong>Schedule it</strong><span>Open <b>Schedules</b>, tick the camera, press <b>24 / 7</b> or drag the hours you want, and save.</span></li>
+        </ol>
+      </aside>
+    </div>
+
+    <details class="addr">
+      <summary>Typical stream addresses by brand</summary>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">Brand</th><th scope="col">Main stream</th><th scope="col">Substream</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Hikvision</th><td>rtsp://user:pass@IP:554/Streaming/Channels/101</td><td>…/Streaming/Channels/102</td></tr>
+            <tr><th scope="row">Dahua, Amcrest</th><td>rtsp://user:pass@IP:554/cam/realmonitor?channel=1&amp;subtype=0</td><td>…subtype=1</td></tr>
+            <tr><th scope="row">Reolink</th><td>rtsp://user:pass@IP:554/h264Preview_01_main</td><td>…/h264Preview_01_sub</td></tr>
+            <tr><th scope="row">TP-Link Tapo</th><td>rtsp://user:pass@IP:554/stream1</td><td>…/stream2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Paths differ between models and firmware, so check your camera's manual. Create a camera user just for RecoraCam, with view-only rights and a password without special characters. Set the camera to H.264.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ======================= demo ======================= -->
+<section class="sec" id="demo" aria-labelledby="h-demo">
+  <div class="wrap demo">
+    <div class="demo__text">
+      <h2 id="h-demo">No camera yet? Run the demo.</h2>
+      <p>Demo mode starts simulated RTSP cameras that behave like real ones. They appear on the Cameras page and record around the clock, so you can try every page in two minutes.</p>
+      <ul class="list">
+        <li>It has its own database and recordings in <code>dev/demo_data</code>, so your real cameras and footage are never touched</li>
+        <li>A yellow <b>DEMO</b> badge shows in the top bar</li>
+        <li>Start the app without <code>--demo</code> to go back to normal</li>
+      </ul>
+    </div>
+    <div class="demo__code">
+      <div class="code code--copy" data-code>
+        <button class="code__copy" type="button">Copy</button>
+<pre><code>python dev/setup_demo.py   <span class="c"># once: downloads MediaMTX and go2rtc,</span>
+                           <span class="c"># makes four sample videos with FFmpeg</span>
+python app.py --demo       <span class="c"># Windows: run_demo_windows.bat</span></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= how it works ======================= -->
+<section class="sec sec--tint" id="how" aria-labelledby="h-how">
+  <div class="wrap">
+    <div class="sec__head">
+      <h2 id="h-how">How it works</h2>
+      <p>One FFmpeg process per camera copies the stream to disk. Everything else reads that folder.</p>
+    </div>
+
+    <ol class="flow">
+      <li><b>IP cameras</b><span>RTSP, RTMP, HTTP, UDP or SRT streams</span></li>
+      <li><b>FFmpeg</b><span>one process per camera, copying the stream without re-encoding</span></li>
+      <li><b>Recording folder</b><span>camera, day, then short segment files</span></li>
+      <li><b>Flask app</b><span>playback, export, settings and a JSON API</span></li>
+      <li><b>Your browser</b><span>a single-page app that plays footage with video.js</span></li>
+    </ol>
+
+    <p class="flow__under"><strong>The folder is the index.</strong> The start time and length of each segment are in its file name, so there is no recordings database that can get out of step with the disk.</p>
+    <p class="flow__under">APScheduler starts and stops each recorder from its weekly plan, and a supervisor restarts whatever fails. go2rtc is optional: it connects to each camera once and shares the stream with every browser that watches live. RecoraCam is built with Python, Flask, APScheduler, SQLite, FFmpeg and video.js, and its front end is plain JavaScript with no build step.</p>
+  </div>
+</section>
+
+<!-- ======================= limits and roadmap ======================= -->
+<section class="sec" id="next" aria-labelledby="h-next">
+  <div class="wrap">
+    <div class="sec__head">
+      <h2 id="h-next">What to know before you install</h2>
+      <p>RecoraCam is young. These are its limits today and the ideas for later.</p>
+    </div>
+    <div class="next">
+      <div>
+        <h3>Today</h3>
+        <ul class="list">
+          <li>No login or HTTPS yet, so keep it on a trusted network or behind a VPN</li>
+          <li>Camera passwords are part of the stream address, so they are stored as plain text in the local database. Use a view-only camera user</li>
+          <li>H.265 cameras record fine, but most browsers cannot play them back</li>
+          <li>It does not detect people or vehicles</li>
+          <li>There is no Docker image yet</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Ideas, not promises</h3>
+        <ul class="list">
+          <li>User accounts, login and HTTPS</li>
+          <li>A Docker image and a <code>docker compose</code> file</li>
+          <li>Automated tests and CI</li>
+          <li>Motion and event markers on the timeline</li>
+          <li>Converting H.265 to H.264 on demand for browser playback</li>
+          <li>Search by object or vehicle, and clip download by query</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= faq ======================= -->
+<section class="sec sec--tint" id="faq" aria-labelledby="h-faq">
+  <div class="wrap">
+    <div class="sec__head"><h2 id="h-faq">Questions</h2></div>
+    <div class="faq">
+      <details>
+        <summary>Which cameras work?</summary>
+        <div class="faq__a"><p>Any camera or encoder that gives you a stream FFmpeg can read. Nearly all IP cameras do, usually over RTSP. Press <b>Test connection</b> on the Cameras page to check one before you save it.</p></div>
+      </details>
+      <details>
+        <summary>Do I need a GPU or a powerful computer?</summary>
+        <div class="faq__a"><p>No. Recording copies the stream instead of re-encoding it, so CPU use stays close to zero. An NVIDIA GPU is used only when you export footage from a camera that does not send H.264, and without one the CPU does that job.</p></div>
+      </details>
+      <details>
+        <summary>How much disk space do I need?</summary>
+        <div class="faq__a">
+          <p>Disk use is the camera's bit rate multiplied by time. You can find the bit rate on the camera's own web page.</p>
+          <table class="mini">
+            <thead><tr><th scope="col">Bit rate</th><th scope="col">Per day</th><th scope="col">30 days</th></tr></thead>
+            <tbody>
+              <tr><td>1 Mbit/s</td><td>11 GB</td><td>324 GB</td></tr>
+              <tr><td>2 Mbit/s</td><td>21.6 GB</td><td>648 GB</td></tr>
+              <tr><td>4 Mbit/s</td><td>43 GB</td><td>1.3 TB</td></tr>
+              <tr><td>8 Mbit/s</td><td>86 GB</td><td>2.6 TB</td></tr>
+            </tbody>
+          </table>
+          <p>Set the disk limit in Settings below what you can spare, and RecoraCam removes the oldest days when it is passed.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does it work without internet?</summary>
+        <div class="faq__a"><p>Recording, schedules, playback and export need only Python and FFmpeg on your own network. Live view needs go2rtc, which <code>scripts/get_binaries.py</code> downloads once. The application's pages load two fonts from Google Fonts, so for a fully offline setup host those fonts locally.</p></div>
+      </details>
+      <details>
+        <summary>Can I watch from outside my home?</summary>
+        <div class="faq__a"><p>Not safely without extra steps, because there is no login yet. Use a VPN such as WireGuard or Tailscale, or put a reverse proxy with HTTPS and authentication in front of it. Never open ports 5000 or 1984 to the internet.</p></div>
+      </details>
+      <details>
+        <summary>Recording works, but playback is black. Why?</summary>
+        <div class="faq__a"><p>The camera is probably sending H.265 (HEVC), which most browsers cannot play. Switch the camera to H.264. The substream is often H.264 already, and downloaded MP4 files still play in VLC.</p></div>
+      </details>
+      <details>
+        <summary>What does it cost, and what is the licence?</summary>
+        <div class="faq__a"><p>Nothing. RecoraCam is free software under the GNU Lesser General Public License, version 3. The full text is in the repository.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot__row">
+      <div>
+        <p>RecoraCam NVR. Your cameras, your disk, your network.</p>
+        <p>Released under the LGPL v3. FFmpeg, go2rtc, MediaMTX, Flask and the other projects it uses keep their own licences.</p>
+      </div>
+      <nav class="foot__links" aria-label="Project links">
+        <a data-repo="" href="https://github.com/YOUR-USERNAME/recoracam-nvr">Source on GitHub</a>
+        <a data-repo="#readme" href="https://github.com/YOUR-USERNAME/recoracam-nvr#readme">Documentation</a>
+        <a data-repo="/issues" href="https://github.com/YOUR-USERNAME/recoracam-nvr/issues">Report an issue</a>
+        <a data-repo="/blob/main/LICENSE" href="https://github.com/YOUR-USERNAME/recoracam-nvr/blob/main/LICENSE">Licence</a>
+        <a data-repo="#third-party-software" href="https://github.com/YOUR-USERNAME/recoracam-nvr#third-party-software">Third-party software</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* 1. Links to the repository. On https://NAME.github.io/REPO/ the address is worked out from the page's own address,
+        so nothing has to be edited. Anywhere else the defaults below are used. */
+  var owner = "YOUR-USERNAME", repo = "recoracam-nvr";
+  if (/\.github\.io$/i.test(location.hostname)) {
+    owner = location.hostname.split(".")[0];
+    var seg = location.pathname.split("/").filter(Boolean)[0];
+    if (seg && !/\.html?$/i.test(seg)) repo = seg;
+  }
+  var base = "https://github.com/" + owner + "/" + repo;
+  document.querySelectorAll("a[data-repo]").forEach(function (a) { a.href = base + a.getAttribute("data-repo"); });
+  document.querySelectorAll("[data-owner]").forEach(function (s) { s.textContent = owner; });
+
+  /* 2. Clock on the main camera tile */
+  var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+  var clock = document.querySelector("[data-clock]");
+  function tick() {
+    if (!clock) return;
+    var d = new Date();
+    clock.textContent = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* 3. Timeline: recorded blocks end at "now"; the pointer scrubs */
+  var track = document.querySelector("[data-track]");
+  if (track) {
+    var now = new Date(), frac = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+    frac = Math.min(Math.max(frac, 0.12), 0.995);
+    var spans = [[0, .27], [.31, .62], [.68, 1]];
+    track.querySelectorAll(".track__block").forEach(function (el, i) {
+      el.style.left = (spans[i][0] * frac * 100) + "%";
+      el.style.width = ((spans[i][1] - spans[i][0]) * frac * 100) + "%";
+    });
+    track.querySelector("[data-now]").style.left = (frac * 100) + "%";
+    var hover = track.querySelector("[data-hover]"), bubble = track.querySelector("[data-bubble]");
+    var move = function (e) {
+      var r = track.getBoundingClientRect(), x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), s = Math.round(x * 86399);
+      hover.style.display = "block"; hover.style.left = (x * 100) + "%";
+      bubble.textContent = pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s % 3600 / 60)) + ":" + pad(s % 60);
+    };
+    track.addEventListener("pointermove", move);
+    track.addEventListener("pointerdown", move);
+    track.addEventListener("pointerleave", function () { hover.style.display = "none"; });
+  }
+
+  /* 4. Videos play only while visible, and not at all if the visitor prefers less motion */
+  var vids = document.querySelectorAll(".tile video");
+  if (reduce) {
+    vids.forEach(function (v) { v.removeAttribute("autoplay"); v.pause(); });
+  } else if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { var p = en.target.play && (en.isIntersecting ? en.target.play() : en.target.pause()); if (p && p.catch) p.catch(function () {}); });
+    }, { threshold: 0.2 });
+    vids.forEach(function (v) { io.observe(v); });
+  }
+
+  /* 5. Windows / Linux tabs (without JavaScript both lists are simply shown) */
+  var tabs = document.querySelector("[data-tabs]");
+  if (tabs) {
+    var btns = Array.prototype.slice.call(tabs.querySelectorAll("[role=tab]"));
+    var select = function (btn, focus) {
+      btns.forEach(function (b) {
+        var on = b === btn;
+        b.setAttribute("aria-selected", on);
+        b.tabIndex = on ? 0 : -1;
+        document.getElementById(b.getAttribute("aria-controls")).hidden = !on;
+      });
+      if (focus) btn.focus();
+    };
+    btns.forEach(function (b, i) {
+      b.addEventListener("click", function () { select(b); });
+      b.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); select(btns[(i + (e.key === "ArrowRight" ? 1 : btns.length - 1)) % btns.length], true); }
+      });
+    });
+    select(/Win/i.test(navigator.platform || navigator.userAgent) ? btns[0] : (/Mac|Linux|X11/i.test(navigator.platform || navigator.userAgent) ? btns[1] : btns[0]));
+  }
+
+  /* 6. Copy buttons */
+  document.querySelectorAll("[data-code]").forEach(function (box) {
+    var btn = box.querySelector(".code__copy"), pre = box.querySelector("pre");
+    if (!btn || !pre) return;
+    btn.addEventListener("click", function () {
+      var text = pre.innerText.replace(/^[ \t]+#.*\n/gm, "").replace(/[ \t]+#.*$/gm, "").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+      var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1600); };
+      if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (e) {} t.remove(); done(); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

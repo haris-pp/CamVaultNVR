@@ -36,15 +36,15 @@ import go2rtc_launcher  # starts/stops go2rtc together with the app
 # whatever folder the app was started from.
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# Demo mode (off by default): `python app.py --demo` or CAMVAULT_DEMO=1.
+# Demo mode (off by default): `python app.py --demo` or RECORACAM_DEMO=1.
 # It uses simulated cameras and keeps EVERYTHING in dev/demo_data/ (own database, own recordings),
 # so it can never touch real cameras or real recordings. See dev/README.md.
-DEMO = "--demo" in sys.argv or os.environ.get("CAMVAULT_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
+DEMO = "--demo" in sys.argv or os.environ.get("RECORACAM_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
 DEMO_DIR = "dev/demo_data"
 
 def _schedule_timezone():
-    """Time zone of the weekly schedules: this computer's own, unless CAMVAULT_TZ says otherwise (e.g. Europe/Berlin)."""
-    name = os.environ.get("CAMVAULT_TZ", "").strip()
+    """Time zone of the weekly schedules: this computer's own, unless RECORACAM_TZ says otherwise (e.g. Europe/Berlin)."""
+    name = os.environ.get("RECORACAM_TZ", "").strip()
     if name:
         return name
     try:
@@ -52,7 +52,7 @@ def _schedule_timezone():
         return get_localzone()
     except Exception as exc:
         print(f"WARNING: could not detect this computer's time zone ({exc}). Schedules use UTC - "
-              "set CAMVAULT_TZ=Continent/City (for example Europe/Berlin) to fix that.", file=sys.stderr)
+              "set RECORACAM_TZ=Continent/City (for example Europe/Berlin) to fix that.", file=sys.stderr)
         return "UTC"
 
 
@@ -64,8 +64,8 @@ scheduler.start()
 
 app = Flask(__name__)
 # The database holds camera addresses INCLUDING their passwords - it is git-ignored, never commit it.
-# CAMVAULT_DB can point somewhere else (e.g. another disk).
-DB = f"{DEMO_DIR}/app_database.db" if DEMO else (os.environ.get("CAMVAULT_DB") or "app_database.db")
+# RECORACAM_DB can point somewhere else (e.g. another disk).
+DB = f"{DEMO_DIR}/app_database.db" if DEMO else (os.environ.get("RECORACAM_DB") or "app_database.db")
 
 active_recordings = {}
 recording_schedules = {}
@@ -585,7 +585,7 @@ def re_schedule_recording(re_schedule_data):
         # START job
         scheduler.add_job(
             start_recording,
-            CronTrigger(day_of_week=start_day, hour=sh, minute=sm, second=ss),
+            CronTrigger(day_of_week=start_day, hour=sh, minute=sm, second=ss, timezone=scheduler.timezone),
             args=[re_schedule_data, multi_day],
             id=f"start_{source_id}_{idx}",
             replace_existing=True
@@ -594,7 +594,7 @@ def re_schedule_recording(re_schedule_data):
         # STOP job
         scheduler.add_job(
             stop_recording,
-            CronTrigger(day_of_week=end_day, hour=eh, minute=em, second=es),
+            CronTrigger(day_of_week=end_day, hour=eh, minute=em, second=es, timezone=scheduler.timezone),
             args=[re_schedule_data],
             id=f"stop_{source_id}_{idx}",
             replace_existing=True
@@ -674,7 +674,7 @@ def schedule_recording(schedule_data):
         logger.info("[SCHEDULER] START | source=%s | day=%s | time=%02d:%02d:%02d | multi_day=%s",schedule_data["source_name"],DAY_NAME[start_day],sh, sm, ss,multi_day)
         scheduler.add_job(
             start_recording,
-            CronTrigger(day_of_week=start_day, hour=sh, minute=sm, second=ss),
+            CronTrigger(day_of_week=start_day, hour=sh, minute=sm, second=ss, timezone=scheduler.timezone),
             args=[schedule_data,multi_day],
             id=f"start_{source_id}_{idx}",
             replace_existing=True
@@ -683,7 +683,7 @@ def schedule_recording(schedule_data):
         logger.info("[SCHEDULER] STOP  | source=%s | day=%s | time=%02d:%02d:%02d",schedule_data["source_name"], DAY_NAME[end_day],eh, em, es )
         scheduler.add_job(
             stop_recording,
-            CronTrigger(day_of_week=end_day, hour=eh, minute=em, second=es),
+            CronTrigger(day_of_week=end_day, hour=eh, minute=em, second=es, timezone=scheduler.timezone),
             args=[schedule_data],
             id=f"stop_{source_id}_{idx}",
             replace_existing=True
@@ -1874,7 +1874,7 @@ ensure_recording_folder()
 
 if __name__ == "__main__":
     # Live view: starts go2rtc next to the app if it is installed (go2rtc/go2rtc[.exe]); stops it on exit.
-    # Not installed = live view off, everything else works. CAMVAULT_GO2RTC=0 never starts it.
+    # Not installed = live view off, everything else works. RECORACAM_GO2RTC=0 never starts it.
     go2rtc_launcher.start()
 
     # Demo mode only: simulated cameras + their own database. Nothing of this runs in a normal start.
@@ -1915,13 +1915,13 @@ if __name__ == "__main__":
     
     
 
-    # CAMVAULT_HOST=127.0.0.1 keeps the app reachable from this computer only; CAMVAULT_PORT changes the port.
-    host = os.environ.get("CAMVAULT_HOST", "0.0.0.0")
-    port = int(os.environ.get("CAMVAULT_PORT", "5000"))
+    # RECORACAM_HOST=127.0.0.1 keeps the app reachable from this computer only; RECORACAM_PORT changes the port.
+    host = os.environ.get("RECORACAM_HOST", "0.0.0.0")
+    port = int(os.environ.get("RECORACAM_PORT", "5000"))
     logger.info(" Starting Flask app on http://%s:%s%s", host, port, "   [DEMO MODE]" if DEMO else "")
     if host not in ("127.0.0.1", "localhost", "::1"):
         logger.warning(" There is no login: anyone who can reach this computer on port %s can watch and delete "
-                       "recordings. Use a trusted network only (CAMVAULT_HOST=127.0.0.1 limits it to this computer).", port)
+                       "recordings. Use a trusted network only (RECORACAM_HOST=127.0.0.1 limits it to this computer).", port)
     try:
         app.run(host=host, port=port, debug=False, use_reloader=False)
     finally:

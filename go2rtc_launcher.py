@@ -17,7 +17,7 @@ How it finds go2rtc
 
 How to switch it off
   * Do not install it (nothing to start), or
-  * set CAMVAULT_GO2RTC=0 before starting the app (it is then never started, even if installed), or
+  * set RECORACAM_GO2RTC=0 before starting the app (it is then never started, even if installed), or
   * point GO2RTC_API at a go2rtc that runs somewhere else - the app then uses that one and starts nothing.
 
 Its settings are in go2rtc/go2rtc.yaml. The log is Logs/go2rtc.log (reset at every start).
@@ -88,8 +88,8 @@ def start() -> bool:
     """Start go2rtc if it is installed and not running yet. Never raises. True when live view is available."""
     global _proc, _log_handle
     try:
-        if os.environ.get("CAMVAULT_GO2RTC", "1").strip() == "0":
-            log.info("[GO2RTC] switched off (CAMVAULT_GO2RTC=0) - live view disabled")
+        if os.environ.get("RECORACAM_GO2RTC", "1").strip() == "0":
+            log.info("[GO2RTC] switched off (RECORACAM_GO2RTC=0) - live view disabled")
             return False
         if go2rtc_client.is_up():
             log.info("[GO2RTC] already running at %s - using it", go2rtc_client.API_URL)

@@ -1,5 +1,5 @@
 """
-scripts/get_binaries.py - download the optional helper programs CamVault can use.
+scripts/get_binaries.py - download the optional helper programs RecoraCam can use.
 
     python scripts/get_binaries.py              go2rtc only (live view in the browser)
     python scripts/get_binaries.py --mediamtx   MediaMTX only (needed by the demo cameras)
@@ -39,7 +39,7 @@ IS_WIN = os.name == "nt"
 EXE = ".exe" if IS_WIN else ""
 
 MEDIAMTX_DEFAULT = "1.15.1"
-UA = {"User-Agent": "camvault-nvr/get_binaries"}
+UA = {"User-Agent": "recoracam-nvr/get_binaries"}
 
 
 # ------------------------------------------------------------- platform ---
@@ -142,7 +142,7 @@ def install(label, urls, dest, wanted_in_archive):
             os.replace(tmp, dest)
         except PermissionError:
             tmp.unlink(missing_ok=True)
-            sys.exit(f"  {dest.name} is in use - close CamVault (and go2rtc / MediaMTX) and run this again.")
+            sys.exit(f"  {dest.name} is in use - close RecoraCam (and go2rtc / MediaMTX) and run this again.")
         return True
     return False
 

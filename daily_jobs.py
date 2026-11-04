@@ -169,7 +169,7 @@ def apply_cleanup_times(times):
     for h, m in parse_times(",".join(times)):
         scheduler.add_job(
             daily_job,
-            trigger=CronTrigger(hour=h, minute=m),
+            trigger=CronTrigger(hour=h, minute=m, timezone=scheduler.timezone),
             id=f"daily_job_{h:02d}{m:02d}",
             name=f"Daily Job - {h:02d}:{m:02d}",
             replace_existing=True

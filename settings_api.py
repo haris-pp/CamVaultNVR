@@ -1,9 +1,9 @@
 """
-Settings API for CamVault.
+Settings API for RecoraCam.
 
     GET  /api/settings                 all settings, typed (with defaults for anything not saved yet)
     POST /api/settings                 save any subset of the settings; every value is checked first
-    POST /api/settings/check_folder    can CamVault write to this folder?
+    POST /api/settings/check_folder    can RecoraCam write to this folder?
     GET  /api/settings/browse          folders inside a folder, plus the drives (for the folder picker)
     POST /api/settings/make_folder     create a new folder inside a folder (folder picker)
     GET  /api/settings/storage         disk usage, size of the recordings, oldest recorded day
@@ -185,13 +185,13 @@ def check_folder():
     if p.exists():
         if not p.is_dir():
             return jsonify({"ok": False, "path": absolute, "message": "That path is a file, not a folder."})
-        probe = p / ".camvault_write_test"
+        probe = p / ".recoracam_write_test"
         try:
             probe.write_text("ok")
             probe.unlink()
         except OSError:
             return jsonify({"ok": False, "path": absolute,
-                            "message": "The folder exists but CamVault cannot write to it."})
+                            "message": "The folder exists but RecoraCam cannot write to it."})
         free = shutil.disk_usage(p).free / 1024 ** 3
         return jsonify({"ok": True, "path": absolute, "message": f"Writable · {free:.0f} GB free on this drive"})
 
@@ -241,7 +241,7 @@ def _drives():
 
 
 def _places():
-    places = [{"label": "CamVault folder", "path": str(Path.cwd())}]
+    places = [{"label": "RecoraCam folder", "path": str(Path.cwd())}]
     home = Path.home()
     if home.is_dir():
         places.append({"label": "Home", "path": str(home)})
@@ -272,7 +272,7 @@ def browse():
                 except OSError:
                     continue
     except PermissionError:
-        error = "CamVault is not allowed to open this folder"
+        error = "RecoraCam is not allowed to open this folder"
     except OSError as e:
         error = f"Could not read this folder ({e.strerror or e})"
     folders.sort(key=lambda f: f["name"].lower())
@@ -310,7 +310,7 @@ def make_folder():
     try:
         target.mkdir()
     except PermissionError:
-        return jsonify({"ok": False, "message": "CamVault is not allowed to create a folder here"})
+        return jsonify({"ok": False, "message": "RecoraCam is not allowed to create a folder here"})
     except OSError as e:
         return jsonify({"ok": False, "message": f"Could not create the folder ({e.strerror or e})"})
     log.info("Created folder %s", target)
