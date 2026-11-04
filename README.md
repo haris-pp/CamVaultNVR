@@ -3,9 +3,9 @@
 # RecoraCam NVR
 
 **A self-hosted, schedule-first network video recorder for IP cameras.**
-Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline and export clips — from any browser, with no cloud and no subscription.
+Plan recordings on a weekly grid, play back any moment on a 24-hour timeline and download the exact clip as MP4 — from any browser, with no cloud and no subscription.
 
-**[Project website](https://YOUR-USERNAME.github.io/recoracam-nvr/)**
+**[Project website](https://haris-pp.github.io/recoracam-website/)**
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/backend-Flask-000000?logo=flask)
@@ -39,15 +39,23 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 
 ## Features
 
+**The three things RecoraCam is built around:**
+
+1. **Schedule** — plan the week on a 15-minute grid, per camera or for several at once. Each camera records only when you want it to.
+2. **Play back** — pick a day on the calendar and scrub a 24-hour timeline; zoom in, jump between sessions, play across gaps.
+3. **Download clips** — mark an in and an out point, queue several clips and save them as MP4 files.
+
+Everything else (adding cameras, live view, disk clean-up, the supervisor that restarts a failed recorder) exists to keep those three working.
+
 | Area | What you get |
 |------|--------------|
-| **Cameras** | Add any stream FFmpeg can read (`rtsp://`, `rtsps://`, `rtmp://`, `http(s)://`, `udp://`, `rtp://`, `srt://`, `tcp://`). A **Test connection** button reports codec, resolution and frame rate before you save. Optional lower-resolution *substream* per camera. |
-| **Recording** | FFmpeg **stream copy** (`-c copy`): no re-encoding, so CPU use stays close to zero and quality is exactly what the camera sends. Footage is cut into short segments (1–300 s, default 10 s) and stored as `camera / day / segment` — plain files you can open with any player. |
 | **Schedules** | Weekly planner on a 15-minute grid, per camera or for several cameras at once, with quick fills (24/7, business hours, nights, weekends) and *copy from another camera*. |
-| **Reliability** | A supervisor restarts a failed recorder with exponential back-off, and a gap checker (every 60 s) restarts any camera that *should* be recording but is not — covering app restarts, network drops and silent FFmpeg deaths. |
-| **Live view** | Camera wall with snapshots; click a tile for live video (WebRTC through go2rtc, with fallback). Lower-resolution substream for tiles, full stream on demand. *Optional.* |
 | **Playback** | Pick a camera and day on a calendar, scrub a 24-hour timeline (zoom 24 h / 6 h / 1 h), jump between recorded sessions, play across gaps and into the next day. Keyboard shortcuts, speed control, 12/24-hour clock. |
 | **Download** | Mark an *in* and *out* point on the timeline, queue several clips and download them as MP4 files. H.264 cameras are copied losslessly in seconds; other codecs (e.g. MPEG-2) are converted on the GPU if NVIDIA is present, otherwise on the CPU. |
+| **Cameras** | Add any stream FFmpeg can read (`rtsp://`, `rtsps://`, `rtmp://`, `http(s)://`, `udp://`, `rtp://`, `srt://`, `tcp://`). A **Test connection** button reports codec, resolution and frame rate before you save. Optional lower-resolution *substream* per camera. |
+| **Recording** | FFmpeg **stream copy** (`-c copy`): no re-encoding, so CPU use stays close to zero and quality is exactly what the camera sends. Footage is cut into short segments (1–300 s, default 10 s) and stored as `camera / day / segment` — plain files you can open with any player. |
+| **Reliability** | A supervisor restarts a failed recorder with exponential back-off, and a gap checker (every 60 s) restarts any camera that *should* be recording but is not — covering app restarts, network drops and silent FFmpeg deaths. |
+| **Live view** | Camera wall with snapshots; click a tile for live video (WebRTC through go2rtc, with fallback). Lower-resolution substream for tiles, full stream on demand. *Optional.* |
 | **Storage** | Automatic clean-up: when the recording disk passes a limit (default 85 %), the oldest days are deleted first, across all cameras, at times you choose. |
 | **Dashboard** | Recording status per camera, CPU, RAM, disk and network, and what is scheduled next. |
 | **Settings** | Everything above is configurable in the browser: recording folder (with a folder picker), segment length, clean-up, playback defaults, live view, system information. |
@@ -81,7 +89,7 @@ Record RTSP streams on a schedule, watch live, scrub through a 24-hour timeline 
 **Install and run**
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/recoracam-nvr.git
+git clone https://github.com/haris-pp/recoracam-nvr.git
 cd recoracam-nvr
 
 python -m venv .venv
@@ -269,7 +277,7 @@ recoracam-nvr/
 │   ├── get_binaries.py     Downloads go2rtc / MediaMTX for your system
 │   └── fix_aspect.py       Repairs the picture shape of recordings made by early versions
 ├── dev/                    Demo mode only: simulator, setup script, README (nothing here runs in a normal start)
-└── docs/                   Project website (GitHub Pages) and the screenshots used in this README
+└── docs/screenshots/       Pictures used in this README (the project website is a separate repository)
 ```
 
 Created at run time and git-ignored: `app_database.db`, `Logs/`, `RECORD/` (default recording folder), `user_data/` (temporary playlists and prepared downloads), `go2rtc/go2rtc(.exe)`, `dev/bin`, `dev/samples`, `dev/demo_data`.
@@ -322,7 +330,7 @@ Issues and pull requests are welcome. Please keep changes focused, describe how 
 
 ## License
 
-Copyright (C) 2026 YOUR NAME
+Copyright (C) 2026 Haris P P
 
 RecoraCam NVR is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License, version 3** (LGPL-3.0). It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
 
